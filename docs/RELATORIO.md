@@ -8,15 +8,17 @@ O `app/Dockerfile` parte de `python:3.12-slim`, uma imagem oficial enxuta com o 
 
 O `app/.dockerignore` exclui `.env`, `__pycache__/`, arquivos `.pyc`/`.pyo` e `.git/` do contexto de build. Isso reduz o contexto e evita incluir configuração local e artefatos Python.
 
+As imagens auxiliares Nginx e Adminer são fixadas por digest para que o Compose use o mesmo conteúdo de imagem entre execuções. Para receber correções de segurança e atualizações, os digests devem ser revisados e atualizados deliberadamente.
+
 ## Blocos do Docker Compose
 
 - **`db`**: usa a imagem oficial `postgres:16-alpine`. As variáveis `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD` vêm do `.env`, sem valores de senha no YAML. O volume `dados_banco` guarda os arquivos do PostgreSQL em `/var/lib/postgresql/data`. `db/init.sql` é montado como bind mount somente leitura no diretório de inicialização do entrypoint oficial; esse script é executado quando o diretório de dados ainda está vazio.
 - **Healthcheck**: `pg_isready` verifica se o banco já aceita conexões, com intervalos, timeout, tentativas e período inicial definidos. O Compose usa esse estado para liberar a aplicação.
 - **`web`**: constrói a imagem a partir de `./app`, passa ao código as variáveis de conexão e define `/app/uploads` como diretório de fotos. Não publica portas no host. O volume `fotos` mantém os arquivos fora do ciclo de vida do contêiner. Seu healthcheck consulta `/health` e confirma que a aplicação também consegue acessar o banco.
-- **`nginx`**: usa a imagem oficial `nginx:alpine`, monta a configuração do proxy como somente leitura e é o único serviço da aplicação com porta publicada (`8080:80`). Encaminha as requisições HTTP para `web:5000`, encaminha os cabeçalhos de host e IP do cliente e permite uploads de até 10 MB (`client_max_body_size 10M`), acima do limite padrão do Nginx.
-- **`adminer`**: usa a imagem oficial Adminer no profile `debug`, aponta para o servidor `db` e publica `8081` somente no loopback do host. O serviço não inicia na configuração padrão.
+- **`nginx`**: usa a imagem oficial `nginx:alpine` fixada por digest, monta a configuração do proxy como somente leitura e é o único serviço da aplicação com porta publicada (`8080:80`). Encaminha as requisições HTTP para `web:5000`, encaminha os cabeçalhos de host e IP do cliente e permite uploads de até 10 MB (`client_max_body_size 10M`), acima do limite padrão do Nginx.
+- **`adminer`**: usa a imagem oficial Adminer fixada por digest no profile `debug`, aponta para o servidor `db` e publica `8081` somente no loopback do host. O serviço não inicia na configuração padrão.
 - **`depends_on`**: a condição `service_healthy` impede a inicialização do `web` antes de o healthcheck do banco passar.
-- **Rede**: `rede_interna` é uma bridge definida pelo usuário, compartilhada pelos serviços; `db` tem um alias explícito para resolução pelo DNS interno do Docker. O banco não publica a porta 5432; somente a porta HTTP do `web` é publicada no host.
+- **Rede**: `rede_interna` é uma bridge definida pelo usuário, compartilhada pelos serviços; `db` tem um alias explícito para resolução pelo DNS interno do Docker. O banco não publica a porta 5432 e `web` não publica a porta 5000; somente o Nginx publica a porta HTTP `8080` no host.
 - **Reinício e volumes**: `restart: unless-stopped` mantém os serviços em execução após falhas/reinícios, salvo parada explícita. `dados_banco` e `fotos` são volumes nomeados, declarados na raiz do Compose.
 
 ## Caminho de um `POST /itens` com foto

@@ -7,7 +7,7 @@
 - `05-remocao-volumes.txt` — remoção dos volumes com `down -v` e reinicialização dos três itens de exemplo pelo `init.sql`.
 - `06-extras-nginx-adminer.txt` — proxy reverso, ausência de porta publicada pelo `web` e interface Adminer ativada pelo profile `debug`.
 - `07-backup-restauracao.txt` — criação do arquivo TAR.GZ, restauração em volume independente e comparação dos arquivos.
-- `08-limite-upload-nginx.txt` — requisição multipart de 1,5 MB encaminhada ao Flask sem bloqueio pelo limite padrão de 1 MB do Nginx.
-- `fotos-backup.tar.gz` — backup gerado no teste; contém apenas as imagens PNG mínimas de teste, sem dados pessoais.
+- `08-limite-upload-nginx.txt` — upload multipart real de uma imagem PNG com mais de 1 MB, cadastrado pela API através do Nginx.
+- `fotos-backup.tar.gz` — backup atualizado do volume; inclui imagens PNG artificiais de teste, sem dados pessoais.
 
-Os uploads de teste usaram uma imagem PNG mínima temporária; ela não contém dados pessoais nem foi incluída no repositório.
+Os uploads de teste usaram imagens PNG artificiais, sem dados pessoais.

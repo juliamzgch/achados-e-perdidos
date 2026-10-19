@@ -1,23 +1,24 @@
-Legenda: inspeção final dos serviços, portas publicadas, usuário web, volumes, rede e tamanhos das imagens. Adminer está parado após o teste do profile debug.
+Legenda: inspeção final de execução após as melhorias: serviços, mapeamentos de porta, usuário não-root, arquivos persistidos, volumes, rede e tamanhos/digests de imagem.
 
 $ docker compose ps
-NAME                       IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                    PORTS
-achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        52 seconds ago   Up 51 seconds (healthy)   5432/tcp
-achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     52 seconds ago   Up 40 seconds             0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
-achados-perdidos-web-1     achados-perdidos-web   "gunicorn --bind 0.0…"   web       52 seconds ago   Up 45 seconds (healthy)   5000/tcp
+NAME                         IMAGE                                                                                  COMMAND                  SERVICE   CREATED              STATUS                 PORTS
+achados-perdidos-adminer-1   adminer:latest                                                                         "entrypoint.sh docke…"   adminer   About an hour ago    Up About an hour       127.0.0.1:8081->8080/tcp
+achados-perdidos-db-1        postgres:16-alpine                                                                     "docker-entrypoint.s…"   db        6 hours ago          Up 6 hours (healthy)   5432/tcp
+achados-perdidos-nginx-1     nginx:alpine@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913   "/docker-entrypoint.…"   nginx     About a minute ago   Up About a minute      0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1       sha256:64190e73b00c162d242b3744912056058e7c0cb9bf0f7ad79fd71cea3723f1c1                "gunicorn --bind 0.0…"   web       6 hours ago          Up 6 hours (healthy)   5000/tcp
 
 $ docker compose --profile debug ps -a
-NAME                         IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                     PORTS
-achados-perdidos-adminer-1   adminer:latest         "entrypoint.sh docke…"   adminer   2 minutes ago    Exited (0) 2 minutes ago   
-achados-perdidos-db-1        postgres:16-alpine     "docker-entrypoint.s…"   db        52 seconds ago   Up 51 seconds (healthy)    5432/tcp
-achados-perdidos-nginx-1     nginx:alpine           "/docker-entrypoint.…"   nginx     52 seconds ago   Up 40 seconds              0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
-achados-perdidos-web-1       achados-perdidos-web   "gunicorn --bind 0.0…"   web       52 seconds ago   Up 45 seconds (healthy)    5000/tcp
+NAME                         IMAGE                                                                                  COMMAND                  SERVICE   CREATED              STATUS                 PORTS
+achados-perdidos-adminer-1   adminer:latest                                                                         "entrypoint.sh docke…"   adminer   About an hour ago    Up About an hour       127.0.0.1:8081->8080/tcp
+achados-perdidos-db-1        postgres:16-alpine                                                                     "docker-entrypoint.s…"   db        6 hours ago          Up 6 hours (healthy)   5432/tcp
+achados-perdidos-nginx-1     nginx:alpine@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913   "/docker-entrypoint.…"   nginx     About a minute ago   Up About a minute      0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1       sha256:64190e73b00c162d242b3744912056058e7c0cb9bf0f7ad79fd71cea3723f1c1                "gunicorn --bind 0.0…"   web       6 hours ago          Up 6 hours (healthy)   5000/tcp
 
-$ docker inspect bindings (db/web/nginx/adminer)
+$ docker inspect dos mapeamentos de porta
 /achados-perdidos-db-1 {"5432/tcp":null}
 /achados-perdidos-web-1 {"5000/tcp":null}
 /achados-perdidos-nginx-1 {"80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"},{"HostIp":"::","HostPort":"8080"}]}
-/achados-perdidos-adminer-1 {}
+/achados-perdidos-adminer-1 {"8080/tcp":[{"HostIp":"127.0.0.1","HostPort":"8081"}]}
 
 $ docker compose exec web whoami
 app
@@ -31,13 +32,14 @@ $ GET /health
 
 
 $ GET /estatisticas
-{"fotos_no_volume":2,"itens_no_banco":5}
+{"fotos_no_volume":3,"itens_no_banco":6}
 
 
-$ docker compose exec web ls -l /app/uploads
-total 8
--rw-r--r-- 1 app app 68 Oct 19 15:58 0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
--rw-r--r-- 1 app app 68 Oct 19 15:58 847bfce9e4954a2eb56f3ccf300f2fb9.png
+$ docker compose exec web ls -lh /app/uploads
+total 1.4M
+-rw-r--r-- 1 app app   68 Oct 19 15:58 0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
+-rw-r--r-- 1 app app   68 Oct 19 15:58 847bfce9e4954a2eb56f3ccf300f2fb9.png
+-rw-r--r-- 1 app app 1.4M Oct 19 22:02 ecfcae7795614f7e997a93477fb7597c.png
 
 $ docker volume ls --filter label=com.docker.compose.project=achados-perdidos
 DRIVER    VOLUME NAME
@@ -128,11 +130,18 @@ $ docker network inspect achados-perdidos_rede_interna
                 "IPv4Address": "172.20.0.2/16",
                 "IPv6Address": ""
             },
-            "d98725bfdc90b921346fbf15666b882f459389273bed83fa4a58c69b4fb94ed8": {
+            "8ddfa525c264636aaddcb99f0f8dbd323c147f7a52c6aa1d298bd08f125e139a": {
                 "Name": "achados-perdidos-nginx-1",
-                "EndpointID": "fd5574af5fdc5c3aac03baae46c7f375dfe8de32aff273123e6f5ed34086102f",
-                "MacAddress": "b2:68:27:29:6a:f1",
+                "EndpointID": "e9ea1f04822cd2c4d8bc9892adb16c2f4154dabb1749b9ab128ddbac817065e9",
+                "MacAddress": "4a:93:12:96:6c:fa",
                 "IPv4Address": "172.20.0.4/16",
+                "IPv6Address": ""
+            },
+            "a29d9d8b69a754608f8544b858f0e3ce66823bc0c328d5131e58a4693e8226ae": {
+                "Name": "achados-perdidos-adminer-1",
+                "EndpointID": "37198d22aeef1b6dbf8699cb4b87177ef0fbd5464d459abdd1a2cd5417e1de31",
+                "MacAddress": "a2:1a:b5:84:93:3d",
+                "IPv4Address": "172.20.0.5/16",
                 "IPv6Address": ""
             }
         },
@@ -140,8 +149,8 @@ $ docker network inspect achados-perdidos_rede_interna
             "IPAM": {
                 "Subnets": {
                     "172.20.0.0/16": {
-                        "IPsInUse": 6,
-                        "DynamicIPsAvailable": 65530
+                        "IPsInUse": 7,
+                        "DynamicIPsAvailable": 65529
                     }
                 }
             }
@@ -149,33 +158,37 @@ $ docker network inspect achados-perdidos_rede_interna
     }
 ]
 
-$ docker image ls (project, nginx, Adminer sizes)
-achados-perdidos-web:latest 233MB
-adminer:latest 169MB
-nginx:alpine 93.6MB
+$ docker image ls project/nginx/adminer
+achados-perdidos-web:latest e59728050f39 233MB
+adminer:latest 49a7d30e71de 169MB
+nginx:alpine db35bfc6b295 93.6MB
+
+$ pinned digests
+[nginx:alpine] ["nginx@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913"]
+[adminer:latest] ["adminer@sha256:49a7d30e71de97fb18933ffe7d46cc2b343c49fd7a63a7791c8be2548eb65115"]
 
 $ docker compose logs --tail 20 nginx web
-web-1    | [2026-10-19 15:58:32 +0000] [1] [INFO] Starting gunicorn 23.0.0
-web-1    | [2026-10-19 15:58:32 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
-web-1    | [2026-10-19 15:58:32 +0000] [1] [INFO] Using worker: sync
-web-1    | [2026-10-19 15:58:32 +0000] [7] [INFO] Booting worker with pid: 7
-nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 23
-nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 24
-nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 25
-nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 26
-nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 27
-nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 28
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /itens HTTP/1.1" 200 366 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /itens HTTP/1.1" 200 366 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /itens?local=biblio HTTP/1.1" 200 120 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "POST /itens HTTP/1.1" 201 55 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "POST /itens HTTP/1.1" 201 55 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /fotos/0fb10ec1b24d4aa1a9bbfeaad445ff4a.png HTTP/1.1" 200 68 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /fotos/847bfce9e4954a2eb56f3ccf300f2fb9.png HTTP/1.1" 200 68 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:55 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:59:18 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
-nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:59:18 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
+web-1  | [2026-10-19 15:58:32 +0000] [1] [INFO] Starting gunicorn 23.0.0
+web-1  | [2026-10-19 15:58:32 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+web-1  | [2026-10-19 15:58:32 +0000] [1] [INFO] Using worker: sync
+web-1  | [2026-10-19 15:58:32 +0000] [7] [INFO] Booting worker with pid: 7
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: nginx/1.31.4
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0)
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: OS: Linux 7.0.12-linuxkit
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker processes
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker process 21
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker process 22
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker process 23
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker process 24
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker process 25
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker process 26
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker process 27
+nginx-1  | 2026/10/19 22:02:17 [notice] 1#1: start worker process 28
+nginx-1  | 2026/10/19 22:02:48 [warn] 22#22: *1 a client request body is buffered to a temporary file /var/cache/nginx/client_temp/0000000001, client: 192.168.65.1, server: _, request: "POST /itens HTTP/1.1", host: "localhost:8080"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:22:02:48 +0000] "POST /itens HTTP/1.1" 201 80 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:22:02:48 +0000] "GET /fotos/ecfcae7795614f7e997a93477fb7597c.png HTTP/1.1" 200 1403937 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:22:02:48 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:22:03:11 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:22:03:31 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:22:03:31 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"

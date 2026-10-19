@@ -46,7 +46,7 @@ services:
       - rede_interna
 
   nginx:
-    image: nginx:alpine
+    image: nginx:alpine@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913
     restart: unless-stopped
     ports:
       - "8080:80"
@@ -59,7 +59,7 @@ services:
       - rede_interna
 
   adminer:
-    image: adminer:latest
+    image: adminer:latest@sha256:49a7d30e71de97fb18933ffe7d46cc2b343c49fd7a63a7791c8be2548eb65115
     profiles:
       - debug
     restart: unless-stopped

@@ -26,7 +26,7 @@ docker compose up -d --build
 docker compose ps
 ```
 
-Espere até `db` e `web` aparecerem como `healthy` e `nginx` como `running`. A API fica disponível em `http://localhost:8080`. Apenas o Nginx publica uma porta no host; os contêineres participam da `rede_interna`, e o PostgreSQL não publica a porta 5432.
+Espere até `db` e `web` aparecerem como `healthy` e `nginx` como `running`. A base da API é `http://localhost:8080`; ela não tem página inicial em `/`. Para conferir no navegador, abra `http://localhost:8080/health`. Apenas o Nginx publica uma porta no host; os contêineres participam da `rede_interna`, e o PostgreSQL não publica a porta 5432.
 
 ## Testes rápidos
 

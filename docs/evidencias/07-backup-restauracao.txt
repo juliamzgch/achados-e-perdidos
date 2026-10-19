@@ -1,34 +1,46 @@
-Legenda: backup real do volume fotos e restauração em fotos_restauradas; os hashes dos arquivos correspondem.
+Legenda: backup atualizado do volume fotos (inclui o PNG de 1,4 MB) e restauração íntegra em volume novo, validada por SHA-256.
 
 $ GET /estatisticas antes do backup
-{"fotos_no_volume":2,"itens_no_banco":5}
+{"fotos_no_volume":3,"itens_no_banco":6}
 
+
+$ conteúdo atual do volume fotos
+total 1.4M
+-rw-r--r-- 1 app app   68 Oct 19 15:58 0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
+-rw-r--r-- 1 app app   68 Oct 19 15:58 847bfce9e4954a2eb56f3ccf300f2fb9.png
+-rw-r--r-- 1 app app 1.4M Oct 19 22:02 ecfcae7795614f7e997a93477fb7597c.png
 
 $ backup do volume fotos para docs/evidencias/fotos-backup.tar.gz
--rw-r--r--  1 juliamzch  staff   273B Oct 19 12:58 docs/evidencias/fotos-backup.tar.gz
+-rw-r--r--  1 juliamzch  staff   1.3M Oct 19 19:03 docs/evidencias/fotos-backup.tar.gz
 
-$ conteúdo do arquivo
-drwxr-xr-x 999/ping         0 2026-10-19 15:58:47 ./
--rw-r--r-- 999/ping        68 2026-10-19 15:58:47 ./0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
--rw-r--r-- 999/ping        68 2026-10-19 15:58:47 ./847bfce9e4954a2eb56f3ccf300f2fb9.png
+$ arquivos no backup
+./
+./0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
+./ecfcae7795614f7e997a93477fb7597c.png
+./847bfce9e4954a2eb56f3ccf300f2fb9.png
 
-$ criar volume fotos_restauradas
+$ criar volume temporário para restauração
 fotos_restauradas
 
-$ restaurar no volume novo e definir UID/GID do usuário app (999:999)
+$ restaurar com UID/GID app (999:999)
 
 $ arquivos restaurados
-total 8
+total 1380
 -rw-r--r--    1 999      999             68 Oct 19 15:58 0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
 -rw-r--r--    1 999      999             68 Oct 19 15:58 847bfce9e4954a2eb56f3ccf300f2fb9.png
+-rw-r--r--    1 999      999        1403937 Oct 19 22:02 ecfcae7795614f7e997a93477fb7597c.png
 
-$ hashes no volume original fotos
+$ hashes no volume original
+25586dcbceb09f788699bdbd282f4b1e374a700daa55c640151450164f762bcf  ecfcae7795614f7e997a93477fb7597c.png
 431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460  0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
 431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460  847bfce9e4954a2eb56f3ccf300f2fb9.png
 
 $ hashes no volume restaurado
+25586dcbceb09f788699bdbd282f4b1e374a700daa55c640151450164f762bcf  ecfcae7795614f7e997a93477fb7597c.png
 431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460  0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
 431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460  847bfce9e4954a2eb56f3ccf300f2fb9.png
 
-$ remover apenas o volume temporário de restauração
+SHA-256 lists match.
+
+$ remover volume temporário de restauração
 fotos_restauradas

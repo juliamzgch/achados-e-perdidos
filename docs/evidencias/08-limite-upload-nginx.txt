@@ -1,21 +1,15 @@
-Legenda: o Nginx aceita uma requisição multipart de 1,5 MB (acima do padrão de 1 MB) e a encaminha ao Flask; resposta 404 da rota inexistente prova que não foi bloqueada com 413 pelo proxy.
+Legenda: imagem PNG válida de mais de 1 MB enviada pelo endpoint real; o Nginx encaminha o upload e a API retorna HTTP 201, e a foto pode ser lida de volta.
 
-$ configuração ativa do Nginx
-140-    listen 80;
-141-    server_name _;
-142:    client_max_body_size 10M;
-143-
-144-    location / {
+$ tamanho e tipo da imagem de teste
+-rw-r--r--@ 1 juliamzch  wheel   1.3M Oct 19 19:02 /tmp/achados-upload-1-5mb.png
+/tmp/achados-upload-1-5mb.png: PNG image data, 640 x 640, 8-bit/color RGBA, non-interlaced
 
-$ tamanho do arquivo enviado
--rw-r--r--@ 1 juliamzch  wheel   1.5M Oct 19 13:32 /tmp/achados-upload-over-1mb.bin
+$ POST /itens com foto PNG > 1 MB via Nginx
+{"foto":"ecfcae7795614f7e997a93477fb7597c.png","id":6}
 
-$ POST multipart de 1,5 MB para rota inexistente
-HTTP 404
+$ GET /fotos/ecfcae7795614f7e997a93477fb7597c.png
+HTTP 200; 1403937 bytes
+Downloaded file matches original (cmp OK).
 
-$ trecho da resposta do Flask
-<!doctype html>
-<html lang=en>
-<title>404 Not Found</title>
-<h1>Not Found</h1>
-<p>The requested URL was not found on the server. If you entered the URL manually
+$ GET /estatisticas
+{"fotos_no_volume":3,"itens_no_banco":6}
