@@ -1,0 +1,38 @@
+Teste de escala do serviço web
+Data: 2026-10-19
+
+O ambiente já estava com três réplicas web em execução antes deste teste. O comando
+foi executado para confirmar o estado desejado; os serviços permaneceram ativos.
+
+$ docker compose up -d --scale web=3
+Container achados-perdidos-db-1 Running
+Container achados-perdidos-web-1 Running
+Container achados-perdidos-web-2 Running
+Container achados-perdidos-web-3 Running
+Container achados-perdidos-nginx-1 Running
+db Healthy
+web-1 Healthy
+web-2 Healthy
+web-3 Healthy
+
+$ docker compose ps
+SERVICE   NAME                         STATUS
+db        achados-perdidos-db-1        Up (healthy)
+web       achados-perdidos-web-1       Up (healthy), 5000/tcp
+web       achados-perdidos-web-2       Up (healthy), 5000/tcp
+web       achados-perdidos-web-3       Up (healthy), 5000/tcp
+nginx     achados-perdidos-nginx-1     Up, 0.0.0.0:8080->80/tcp
+
+Nenhuma réplica web publica uma porta no host. A entrada HTTP continua sendo
+localhost:8080, publicada pelo Nginx.
+
+$ curl http://localhost:8080/health
+Repetido 10 vezes: todas as respostas foram HTTP 200 e indicaram:
+{"banco":"conectado","container":"1044102d5131","status":"ok"}
+
+O hostname 1044102d5131 foi identificado por docker inspect como achados-perdidos-web-1.
+As outras réplicas também estavam saudáveis, mas não foram observadas respondendo a
+essas dez requisições pelo Nginx. Portanto, o teste comprova que o Compose iniciou as
+três réplicas, mas não que a configuração atual do Nginx distribua o tráfego entre elas.
+
+O teste não executou operações de escrita e não removeu nem recriou volumes.

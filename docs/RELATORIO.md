@@ -1,50 +1,142 @@
 # Relatório técnico
 
-## Dockerfile da aplicação
+Este relatório explica como a aplicação fornecida foi empacotada e como os serviços do Compose cooperam. O código da API e o esquema SQL foram mantidos conforme os arquivos fornecidos; as mudanças desta entrega concentram-se na imagem, na rede, nos volumes, nas configurações e na documentação.
 
-O `app/Dockerfile` parte de `python:3.12-slim`, uma imagem oficial enxuta com o runtime exigido. `PYTHONDONTWRITEBYTECODE` evita arquivos `.pyc` no contêiner e `PYTHONUNBUFFERED` envia os logs sem atraso. `WORKDIR /app` define o diretório de trabalho.
+## Visão geral e rastreabilidade
 
-`COPY requirements.txt .` e `RUN pip install --no-cache-dir -r requirements.txt` vêm antes da cópia do código. Assim, uma alteração isolada em `app.py` não invalida a camada de dependências e o pip não deixa cache na imagem. Na mesma etapa são criados o grupo e o usuário de sistema `app`, o diretório `/app/uploads` e sua permissão de escrita. `COPY --chown=app:app app.py .` copia o código com proprietário não privilegiado. `USER app` garante que o processo não execute como root. `EXPOSE 5000` documenta a porta interna e o `CMD` em formato exec inicia Gunicorn em `0.0.0.0:5000`, tornando a aplicação acessível aos outros contêineres.
+A execução local separa responsabilidades: PostgreSQL mantém os registros, Flask/Gunicorn implementa a API, Nginx é a entrada HTTP e Adminer é uma ferramenta administrativa opcional. Os dados mutáveis ficam em volumes; a rede definida pelo Compose permite que os serviços se encontrem por nome, sem publicar o banco ou a aplicação diretamente no host.
 
-O `app/.dockerignore` exclui `.env`, `__pycache__/`, arquivos `.pyc`/`.pyo` e `.git/` do contexto de build. Isso reduz o contexto e evita incluir configuração local e artefatos Python.
+| Requisito ou aspecto avaliado | Implementação | Evidência principal |
+| --- | --- | --- |
+| Imagem Python para a aplicação | [`app/Dockerfile`](../app/Dockerfile): Python 3.12 slim, instalação de dependências em camada própria e execução como usuário `app`. | [`03-inspecoes.txt`](evidencias/03-inspecoes.txt) |
+| Banco e inicialização | Serviço `db`, healthcheck `pg_isready` e script [`db/init.sql`](../db/init.sql). | [`01-subida.txt`](evidencias/01-subida.txt) |
+| Persistência do banco e das fotos | Volumes nomeados `dados_banco` e `fotos`, preservados por `docker compose down`. | [`04-persistencia.txt`](evidencias/04-persistencia.txt) |
+| API e cadastro com imagem | Gunicorn executa Flask; o caminho de gravação é `/app/uploads`, montado em `fotos`. | [`02-testes-funcionais.txt`](evidencias/02-testes-funcionais.txt) |
+| Proxy reverso e entrada HTTP | Nginx publica `8080:80`; `web` e `db` não publicam portas no host. | [`06-extras-nginx-adminer.txt`](evidencias/06-extras-nginx-adminer.txt) |
+| Upload maior que o limite padrão do Nginx | `client_max_body_size 10M`; teste com PNG maior que 1 MB, download e comparação byte a byte. | [`08-limite-upload-nginx.txt`](evidencias/08-limite-upload-nginx.txt) |
+| Administração opcional | Adminer isolado no profile `debug`, publicado somente em loopback. | [`06-extras-nginx-adminer.txt`](evidencias/06-extras-nginx-adminer.txt) |
+| Cópia e restauração das imagens | Backup TAR.GZ restaurado em volume separado, com igualdade dos hashes SHA-256. | [`07-backup-restauracao.txt`](evidencias/07-backup-restauracao.txt) |
 
-As imagens auxiliares Nginx e Adminer são fixadas por digest para que o Compose use o mesmo conteúdo de imagem entre execuções. Para receber correções de segurança e atualizações, os digests devem ser revisados e atualizados deliberadamente.
+O [índice de evidências](evidencias/README.md) descreve o conteúdo de cada registro. Os arquivos são saídas de testes realizados, não um monitoramento contínuo nem uma promessa de disponibilidade do ambiente.
 
-## Blocos do Docker Compose
+## 1. Dockerfile da aplicação
 
-- **`db`**: usa a imagem oficial `postgres:16-alpine`. As variáveis `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD` vêm do `.env`, sem valores de senha no YAML. O volume `dados_banco` guarda os arquivos do PostgreSQL em `/var/lib/postgresql/data`. `db/init.sql` é montado como bind mount somente leitura no diretório de inicialização do entrypoint oficial; esse script é executado quando o diretório de dados ainda está vazio.
-- **Healthcheck**: `pg_isready` verifica se o banco já aceita conexões, com intervalos, timeout, tentativas e período inicial definidos. O Compose usa esse estado para liberar a aplicação.
-- **`web`**: constrói a imagem a partir de `./app`, passa ao código as variáveis de conexão e define `/app/uploads` como diretório de fotos. Não publica portas no host. O volume `fotos` mantém os arquivos fora do ciclo de vida do contêiner. Seu healthcheck consulta `/health` e confirma que a aplicação também consegue acessar o banco.
-- **`nginx`**: usa a imagem oficial `nginx:alpine` fixada por digest, monta a configuração do proxy como somente leitura e é o único serviço da aplicação com porta publicada (`8080:80`). Encaminha as requisições HTTP para `web:5000`, encaminha os cabeçalhos de host e IP do cliente e permite uploads de até 10 MB (`client_max_body_size 10M`), acima do limite padrão do Nginx.
-- **`adminer`**: usa a imagem oficial Adminer fixada por digest no profile `debug`, aponta para o servidor `db` e publica `8081` somente no loopback do host. O serviço não inicia na configuração padrão.
-- **`depends_on`**: a condição `service_healthy` impede a inicialização do `web` antes de o healthcheck do banco passar.
-- **Rede**: `rede_interna` é uma bridge definida pelo usuário, compartilhada pelos serviços; `db` tem um alias explícito para resolução pelo DNS interno do Docker. O banco não publica a porta 5432 e `web` não publica a porta 5000; somente o Nginx publica a porta HTTP `8080` no host.
-- **Reinício e volumes**: `restart: unless-stopped` mantém os serviços em execução após falhas/reinícios, salvo parada explícita. `dados_banco` e `fotos` são volumes nomeados, declarados na raiz do Compose.
+O Dockerfile está em [`app/Dockerfile`](../app/Dockerfile). A ordem das instruções preserva o cache de dependências: o manifesto Python é copiado e instalado antes de `app.py`.
 
-## Caminho de um `POST /itens` com foto
+| Instrução | Função e motivo |
+| --- | --- |
+| `FROM python:3.12-slim` | Usa a imagem oficial do Python 3.12 na variante slim solicitada. Ela fornece o runtime sem incluir uma distribuição completa desnecessária para esta aplicação. |
+| `ENV PYTHONDONTWRITEBYTECODE=1` | Evita gerar arquivos `.pyc` durante a execução e reduz arquivos temporários no contêiner. |
+| `ENV PYTHONUNBUFFERED=1` | Faz com que a saída Python, incluindo os logs de Gunicorn, seja enviada sem buffering prolongado. |
+| `WORKDIR /app` | Define `/app` como diretório corrente para cópias relativas e comandos executados na imagem. |
+| `COPY requirements.txt .` | Copia primeiro somente as dependências. Se o código mudar sem alterar `requirements.txt`, esta camada e a instalação seguinte continuam elegíveis para cache. |
+| `RUN pip install --no-cache-dir -r requirements.txt ...` | Instala Flask, psycopg e Gunicorn sem guardar o cache de downloads do pip na imagem. Na mesma camada, cria o grupo e usuário de sistema `app`, cria `/app/uploads` e transfere a propriedade desse diretório ao usuário. Encadear as ações com `&&` evita camadas intermediárias para cada comando. |
+| `COPY --chown=app:app app.py .` | Copia o código da API com proprietário não-root. Como esta instrução vem depois da instalação, alterações no código não forçam a reinstalação das dependências. |
+| `USER app` | Executa Gunicorn e a aplicação com o usuário sem privilégios, em vez de root. O diretório de uploads já está gravável por esse usuário; o uso desse usuário é conferido em [`03-inspecoes.txt`](evidencias/03-inspecoes.txt). |
+| `EXPOSE 5000` | Documenta a porta interna em que Gunicorn recebe tráfego. `EXPOSE` não publica a porta no host. |
+| `CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]` | Inicia o servidor Gunicorn no endereço acessível aos outros serviços Docker. A forma JSON (exec-form) evita um shell intermediário; `app:app` identifica o módulo `app.py` e o objeto Flask `app`. |
 
-1. `curl` envia `multipart/form-data` para `http://localhost:8080/itens`; a publicação `8080:80` entrega a requisição ao contêiner Nginx.
-2. Nginx encaminha o método, o caminho, o corpo e os cabeçalhos ao serviço `web:5000` pela `rede_interna`.
-3. Gunicorn recebe a requisição e encaminha `/itens` à rota Flask `cadastrar`.
-4. Flask lê `descricao`, `local` e o arquivo `foto`, gera um nome aleatório baseado em UUID e salva o arquivo em `/app/uploads`.
-5. `/app/uploads` é o ponto de montagem do volume nomeado `fotos`; portanto, o arquivo permanece no volume mesmo se o contêiner `web` for removido.
-6. A aplicação conecta-se ao host `db`, porta 5432, usando as credenciais de ambiente. O DNS da `rede_interna` resolve `db` para o contêiner PostgreSQL.
-7. A instrução `INSERT` grava os campos e o nome do arquivo na tabela `itens`; os dados da tabela ficam no volume `dados_banco`.
-8. A API retorna HTTP 201 com o identificador do item e o nome da foto. `GET /itens` fornece a URL `/fotos/<nome>`, servida pelo endpoint de arquivos a partir de `/app/uploads` e entregue ao cliente pelo Nginx.
+O arquivo [`app/.dockerignore`](../app/.dockerignore) exclui `.env`, `.git`, caches Python e arquivos `.pyc` do contexto de build. Como o Compose define `build.context: ./app`, o `.env` da raiz já fica fora do contexto enviado para construir essa imagem; a regra também protege contra um arquivo `.env` acidentalmente colocado dentro de `app/`. As credenciais são passadas em tempo de execução pelo Compose, não copiadas para a imagem.
 
-O arquivo e o registro são gravados em armazenamentos separados, sem uma transação distribuída; uma falha entre a gravação do arquivo e a inserção no banco pode deixar um arquivo sem registro.
+### Cache de camadas na prática
 
-## Ciclo de vida dos volumes
+Na primeira compilação, Docker executa a instalação de dependências. Se somente `app.py` mudar, as camadas de `FROM`, `WORKDIR`, `COPY requirements.txt` e `pip install` continuam iguais e podem ser reutilizadas; apenas a cópia do código e as camadas subsequentes precisam ser refeitas. Se `requirements.txt` mudar, a camada de instalação é invalidada, que é o comportamento esperado para instalar a nova dependência.
 
-- `docker compose down` remove os contêineres e a rede, mas mantém os volumes nomeados. Depois de `docker compose up -d`, os registros e fotos continuam disponíveis.
-- `docker volume ls` lista volumes; `docker volume inspect <volume>` mostra metadados e o ponto de montagem gerenciado pelo Docker. O conteúdo de fotos pode ser verificado com `docker compose exec web ls -l /app/uploads`.
-- No Docker Desktop para macOS, o `Mountpoint` exibido pertence ao daemon dentro da máquina virtual Linux do Docker; não é um caminho diretamente navegável no filesystem do macOS.
-- `docker compose down -v` remove também os volumes declarados pelo projeto. Itens cadastrados e fotos são apagados. No próximo `up`, o volume vazio do PostgreSQL faz o entrypoint executar `init.sql` novamente, recriando a tabela e os três itens de exemplo.
+## 2. Docker Compose, serviço por serviço
 
-O `init.sql` não é uma ferramenta de migração: ele roda somente na inicialização de um diretório de dados vazio. Para alterar uma tabela existente, deve-se aplicar uma migração SQL versionada ao banco, preservando os volumes.
+O [`docker-compose.yml`](../docker-compose.yml) define os serviços `db`, `web`, `nginx` e o serviço opcional `adminer`, além de uma rede e dois volumes nomeados. Os campos de um serviço descrevem elementos diferentes: `image`/`build` selecionam como obter a imagem; `environment` injeta configuração no processo; `volumes` conecta armazenamento; `depends_on` ordena a inicialização; `healthcheck` mede prontidão; `ports` publica portas do host; `networks` define comunicação entre contêineres; `restart` define a política de reinício.
 
-## Extras: proxy, backup e painel de banco
+### Banco `db`
 
-O Nginx é o único serviço que publica a porta 8080 no host; o `web` permanece acessível apenas pela rede Compose. O serviço Adminer é condicionado ao profile `debug`, disponível em `127.0.0.1:8081` e conectado à rede interna para acessar o banco sem publicar a porta PostgreSQL.
+- A imagem `postgres:16-alpine` é a imagem oficial Postgres 16 na variante Alpine.
+- `POSTGRES_DB`, `POSTGRES_USER` e `POSTGRES_PASSWORD` são interpoladas a partir do `.env`. A sintaxe `${VAR:?...}` faz o Compose interromper a configuração se uma variável obrigatória não estiver definida, em vez de subir o banco silenciosamente com valor vazio.
+- `dados_banco:/var/lib/postgresql/data` guarda o diretório de dados fora do ciclo de vida do contêiner.
+- `./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro` é um bind mount somente leitura. O prefixo `./` indica um caminho relativo ao arquivo Compose; `:ro` impede escrita pelo contêiner. A imagem oficial executa o script quando inicializa um diretório de dados vazio; a alteração posterior do arquivo não equivale a uma migração de banco.
+- O healthcheck usa `pg_isready` com as credenciais e o banco configurados. Os `$$` escapam o sinal `$` para que as variáveis sejam expandidas dentro do contêiner, não durante a interpolação do Compose. `interval`, `timeout`, `retries` e `start_period` controlam a frequência, o tempo de resposta permitido, as tentativas e o período de tolerância inicial.
+- Não há bloco `ports` para `db`: a porta `5432` não é publicada no host.
 
-O backup das fotos usa um contêiner descartável com o volume ativo montado somente para leitura e grava um arquivo `.tar.gz` no host. A restauração extrai o arquivo para um novo volume nomeado e define os arquivos como pertencentes ao UID/GID de `app`, permitindo seu uso pela aplicação sem modificar o volume original. O roteiro e as saídas da verificação estão em [README.md](../README.md) e nas evidências.
+### Aplicação `web`
+
+- `build.context: ./app` limita o contexto ao código da aplicação e usa o Dockerfile localizado em `app/`.
+- As variáveis `DB_HOST=db`, `DB_PORT=5432`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` e `UPLOAD_DIR=/app/uploads` correspondem à configuração lida pelo `app.py`.
+- `fotos:/app/uploads` guarda os arquivos recebidos em um volume nomeado.
+- `depends_on` com `condition: service_healthy` espera o PostgreSQL aceitar conexões, e não apenas o início do contêiner.
+- O healthcheck executa uma chamada HTTP local a `/health`. Essa rota executa uma consulta SQL; portanto, a verificação testa tanto o processo da API quanto sua capacidade de conectar ao banco. Os parâmetros do healthcheck controlam quando a aplicação é considerada saudável ou não saudável.
+- O serviço não publica porta no host. A porta 5000 é acessível aos serviços da rede Docker, em especial ao Nginx. A evidência de estado e portas publicados está em [`03-inspecoes.txt`](evidencias/03-inspecoes.txt).
+
+### Proxy reverso `nginx`
+
+- Usa a imagem oficial Nginx fixada por digest, para que o mesmo manifesto de imagem seja usado entre builds enquanto o digest não mudar.
+- Monta `./nginx/default.conf` como somente leitura em `/etc/nginx/conf.d/default.conf`.
+- `8080:80` publica a interface HTTP de entrada no host. É o único serviço principal com uma porta publicada; o `web` não publica `5000` e o banco não publica `5432`.
+- `depends_on` com `condition: service_healthy` espera a aplicação passar no healthcheck antes de iniciar o proxy.
+- A configuração encaminha pedidos a `web:5000`, transmite cabeçalhos de origem e permite corpo de até 10 MB. O limite do Nginx não substitui validação de conteúdo nem cria autenticação.
+- A evidência [`08-limite-upload-nginx.txt`](evidencias/08-limite-upload-nginx.txt) registra um cadastro real por esse caminho e a leitura posterior do arquivo.
+
+### Painel `adminer`
+
+- Usa a imagem oficial Adminer fixada por digest.
+- `profiles: ["debug"]` exclui o painel do `docker compose up` padrão. Para iniciá-lo explicitamente, use `docker compose --profile debug up -d`.
+- `ADMINER_DEFAULT_SERVER=db` sugere o hostname interno do banco na tela de login.
+- A porta é publicada como `127.0.0.1:8081:8080`, acessível apenas pelo loopback do host. O Adminer participa da rede para se conectar ao banco, mas o PostgreSQL continua sem porta publicada. O HTTP 200 da interface e o estado do serviço estão registrados em [`06-extras-nginx-adminer.txt`](evidencias/06-extras-nginx-adminer.txt).
+
+### Rede, volumes e reinício
+
+`rede_interna` é uma rede bridge definida pelo usuário. O DNS do Docker resolve o hostname `db` para o endereço atual do serviço na rede. Os serviços principais não dependem de endereços IP codificados no código. A rede é privada no sentido de rede de contêineres do projeto, mas não está marcada como `internal: true`; isso permite publicar a porta do proxy e significa que a configuração não pretende bloquear toda saída de rede dos contêineres.
+
+Os volumes `dados_banco` e `fotos` são gerenciados pelo Docker, não pertencem à rede e permanecem após `docker compose down`. O `restart: unless-stopped` nos serviços faz o Docker tentar reiniciá-los após falhas ou reinicialização do daemon, salvo se tiverem sido parados explicitamente.
+
+## 3. Inicialização e dependências
+
+Na inicialização normal, a ordem efetiva esperada é:
+
+1. Compose cria a rede e o volume `dados_banco` (e `fotos`).
+2. O PostgreSQL inicializa o diretório de dados. Se estiver vazio, cria banco/usuário e executa `init.sql`.
+3. O healthcheck com `pg_isready` passa quando o banco aceita conexões.
+4. O Compose inicia `web`; seu healthcheck chama `/health`, que testa a conexão com o banco.
+5. Quando `web` está saudável, o Nginx inicia e publica `localhost:8080`.
+
+Assim, `depends_on` sozinho não é confundido com prontidão: a condição `service_healthy` usa o healthcheck do serviço dependente. A saída de inicialização em [`01-subida.txt`](evidencias/01-subida.txt) registra a inicialização dos serviços, enquanto [`02-testes-funcionais.txt`](evidencias/02-testes-funcionais.txt) registra chamadas às rotas da API. O Adminer não participa desta ordem normal; é iniciado somente quando o profile `debug` é solicitado.
+
+## 4. Caminho de um cadastro com foto
+
+Um `POST /itens` com multipart/form-data segue este percurso:
+
+1. O usuário envia `descricao`, `local` e `foto` para `http://localhost:8080/itens`.
+2. A publicação `8080:80` entrega o pedido ao Nginx. O limite de corpo é aplicado aqui antes do encaminhamento.
+3. Nginx encaminha o método, caminho, corpo e cabeçalhos para `web:5000` pela `rede_interna`.
+4. Gunicorn recebe a chamada e despacha para a rota Flask `cadastrar`.
+5. Flask valida a presença de `descricao` e `local`; se houver arquivo, cria um nome UUID e grava em `/app/uploads`.
+6. `/app/uploads` é o ponto de montagem de `fotos`, portanto a imagem reside no volume nomeado e não na camada efêmera do contêiner `web`.
+7. A aplicação conecta-se a `db:5432` usando as variáveis de ambiente e insere na tabela `itens` o texto e o nome da foto. Os dados do PostgreSQL ficam em `dados_banco`.
+8. A resposta HTTP 201 contém o identificador e o nome da imagem. `GET /itens` devolve o caminho `/fotos/<nome>`; o Nginx encaminha o pedido ao endpoint Flask, que envia o arquivo do volume.
+
+Os arquivos e as linhas do banco vivem em armazenamentos distintos e não há transação distribuída entre eles. Se o processo falhar depois de gravar o arquivo, mas antes de inserir a linha SQL, pode restar um arquivo sem registro; se a gravação falhar, a aplicação não deveria anunciar um cadastro completo. Essa separação é suficiente para demonstrar persistência na atividade, mas um sistema de produção precisaria de tratamento compensatório, limpeza periódica e monitoração. O teste ponta a ponta do cadastro e da recuperação da foto está em [`02-testes-funcionais.txt`](evidencias/02-testes-funcionais.txt).
+
+## 5. Ciclo de vida dos volumes
+
+| Operação | Contêineres / rede | `dados_banco` | `fotos` |
+| --- | --- | --- | --- |
+| `docker compose stop` | Para os serviços; mantém contêineres e rede | Mantido | Mantido |
+| `docker compose start` | Inicia novamente os mesmos contêineres | Reutilizado | Reutilizado |
+| `docker compose down` | Remove contêineres e rede | Mantido | Mantido |
+| `docker compose up -d` após `down` | Cria contêineres e rede novos | Reutilizado; preserva itens | Reutilizado; preserva arquivos |
+| `docker compose down -v` | Remove contêineres, rede e volumes do projeto | Apagado | Apagado |
+| `docker compose up -d` após `down -v` | Inicialização limpa | PostgreSQL executa `init.sql`, recriando tabela e três exemplos | Volume vazio |
+
+`docker volume ls` lista volumes e `docker volume inspect` mostra os metadados e o ponto de montagem do daemon. No Docker Desktop para macOS, esse `Mountpoint` fica dentro da máquina virtual Linux gerenciada pelo Docker e não é necessariamente um caminho diretamente navegável no macOS. `docker compose exec web ls -l /app/uploads` inspeciona os arquivos do volume a partir do contêiner que o utiliza.
+
+Os resultados estão separados por finalidade: [`04-persistencia.txt`](evidencias/04-persistencia.txt) verifica preservação após recriar contêineres; [`05-remocao-volumes.txt`](evidencias/05-remocao-volumes.txt) demonstra o caso destrutivo com `down -v` e a reinicialização dos dados de exemplo. Assim, o segundo teste não deve ser interpretado como o procedimento normal de parada.
+
+O script `init.sql` é inicialização, não migração: editar o arquivo e executar `up` não altera uma base persistida. Mudanças de esquema devem ser aplicadas com migrações incrementais e preservando os volumes; `down -v` é uma ação destrutiva e não deve ser usado para “atualizar” um banco com dados que se queira manter.
+
+## 6. Segurança, escopo e operação
+
+- O `.env` local não deve ser versionado; `.env.example` contém somente valores ilustrativos. As variáveis obrigatórias interrompem a renderização do Compose quando faltam.
+- A API e o banco não publicam portas individualmente no host. O acesso HTTP passa pelo Nginx; Adminer permanece desligado no profile `debug` e vinculado a loopback.
+- O usuário `app` tem permissão de escrita no diretório de fotos montado e executa Gunicorn sem root. A imagem e o contêiner Postgres ainda seguem seus próprios padrões de usuário.
+- O digest torna a imagem reproduzível, mas não automaticamente atualizada. Revisar os digests é parte da manutenção de segurança.
+- As rotas fornecidas não implementam autenticação/autorização nem validação aprofundada do tipo de arquivo. O limite de 10 MB no proxy é um limite de tamanho, não uma proteção completa para dados pessoais. Uma implantação real precisa tratar controles de acesso, TLS, retenção e segurança de backups.
+- O Adminer e o Nginx estão fixados por digest no Compose. Isso torna cada referência de imagem específica ao conteúdo identificado, mas não instala automaticamente atualizações de segurança; os digests devem ser revisados e atualizados de forma deliberada.
+
+Os detalhes dos bônus e seus comandos operacionais ficam em [`BONUS.md`](BONUS.md). A configuração e os limites de rede são ilustrados em [`arquitetura.md`](arquitetura.md); as execuções usadas para conferir as afirmações estão listadas em [`evidencias/README.md`](evidencias/README.md).

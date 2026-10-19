@@ -69,7 +69,7 @@ O diagrama completo, incluindo os limites da rede, as portas publicadas, os volu
 
 ## Painel do banco (opcional)
 
-Ative o Adminer apenas quando precisar administrar o banco:
+O Adminer está no profile opcional `debug`, então não é iniciado no uso normal. Para ativá-lo quando precisar administrar o banco:
 
 ```sh
 docker compose --profile debug up -d
@@ -81,9 +81,11 @@ Abra `http://localhost:8081` e use `db` como servidor, o usuário, a senha e o b
 docker compose --profile debug stop adminer
 ```
 
+O guia de [desafios bônus](docs/BONUS.md) explica o profile, os campos de conexão e a restrição da porta ao loopback.
+
 ## Backup e restauração das fotos
 
-Os comandos abaixo salvam o conteúdo do volume nomeado em um arquivo TAR compactado na pasta de evidências. Execute-os na raiz do projeto e ajuste o nome do volume se o projeto Compose usar outro nome.
+O procedimento completo, incluindo inspeção do arquivo e restauração em um volume isolado com verificação de hashes, está no [guia de desafios bônus](docs/BONUS.md). O comando mínimo para criar uma cópia do volume ativo é:
 
 ```sh
 docker run --rm \
@@ -93,26 +95,7 @@ docker run --rm \
   tar -czf /backup/fotos-backup.tar.gz -C /data .
 ```
 
-Restaure em um volume novo. O segundo comando obtém o UID/GID do usuário não-root da imagem; o contêiner temporário extrai o arquivo e devolve a propriedade dos arquivos ao usuário da aplicação:
-
-```sh
-docker volume create fotos_restauradas
-APP_UID="$(docker compose exec -T web id -u app)"
-APP_GID="$(docker compose exec -T web id -g app)"
-docker run --rm \
-  -e APP_UID="$APP_UID" -e APP_GID="$APP_GID" \
-  -v fotos_restauradas:/data \
-  -v "$PWD/docs/evidencias:/backup:ro" \
-  alpine:3.21 \
-  sh -c 'tar -xzf /backup/fotos-backup.tar.gz -C /data && chown -R "$APP_UID:$APP_GID" /data'
-docker run --rm -v fotos_restauradas:/data alpine:3.21 ls -l /data
-```
-
-O volume restaurado é independente do volume ativo `fotos`. Para descartar apenas o volume de demonstração depois de verificar a restauração:
-
-```sh
-docker volume rm fotos_restauradas
-```
+O exemplo usa o nome padrão `achados-perdidos_fotos`; se o diretório ou o nome do projeto Compose for diferente, confira `docker volume ls` e substitua pelo volume correto. O arquivo de backup incluído na entrega contém somente imagens artificiais de teste.
 
 ## Persistência, parada e remoção
 
@@ -136,7 +119,8 @@ Ao subir de novo, o PostgreSQL cria um banco vazio e executa `db/init.sql`, que 
 ## Documentação complementar
 
 - [Relatório técnico](docs/RELATORIO.md): decisões do Dockerfile e do Compose, fluxo de cadastro com foto e ciclo de vida dos volumes.
+- [Desafios bônus](docs/BONUS.md): explicação e comandos para Nginx, backup/restauração e Adminer.
 - [Diagrama de arquitetura](docs/arquitetura.md): rede, serviços, portas, volumes e bind mounts.
 - [Reflexão e equivalência em nuvem](docs/REFLEXAO.md): respostas às questões e opções de serviços gerenciados.
-- [Evidências](docs/evidencias/): saídas reais dos testes e inspeções do ambiente.
+- [Índice de evidências](docs/evidencias/README.md): mapa entre os requisitos e as saídas de teste correspondentes.
 - [Backup de teste das fotos](docs/evidencias/fotos-backup.tar.gz): arquivo usado para demonstrar restauração em volume separado.
