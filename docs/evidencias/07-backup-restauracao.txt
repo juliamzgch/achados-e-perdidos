@@ -1,46 +1,81 @@
 Legenda: backup atualizado do volume fotos (inclui o PNG de 1,4 MB) e restauração íntegra em volume novo, validada por SHA-256.
 
-$ GET /estatisticas antes do backup
+Comandos para reproduzir o backup e a restauração sem sobrescrever o volume ativo.
+Execute na raiz do projeto; confira os nomes dos volumes com `docker volume ls`.
+Esta reprodução cria `/tmp/fotos-backup-reproducao.tar.gz` e um volume
+temporário chamado `fotos_restauradas`. Antes de executar, confirme que esse
+volume e o arquivo temporário não existem ou substitua os nomes por nomes
+livres. A sequência não remove o volume restaurado automaticamente. Ela não
+foi executada para gerar as saídas históricas mostradas abaixo.
+
+```sh
+docker run --rm \
+  -v achados-perdidos_fotos:/data:ro \
+  -v /tmp:/backup \
+  alpine:3.21 \
+  tar -czf /backup/fotos-backup-reproducao.tar.gz -C /data .
+
+docker volume create fotos_restauradas
+APP_UID="$(docker compose exec -T web id -u app)"
+APP_GID="$(docker compose exec -T web id -g app)"
+docker run --rm \
+  -e APP_UID="$APP_UID" -e APP_GID="$APP_GID" \
+  -v fotos_restauradas:/data \
+  -v /tmp:/backup:ro \
+  alpine:3.21 \
+  sh -c 'tar -xzf /backup/fotos-backup-reproducao.tar.gz -C /data && chown -R "$APP_UID:$APP_GID" /data'
+
+docker run --rm -v achados-perdidos_fotos:/data:ro alpine:3.21 \
+  sh -c 'cd /data && sha256sum * | sort'
+docker run --rm -v fotos_restauradas:/data:ro alpine:3.21 \
+  sh -c 'cd /data && sha256sum * | sort'
+rm /tmp/fotos-backup-reproducao.tar.gz
+```
+
+Depois de verificar os hashes, remova `fotos_restauradas` somente se foi o
+volume temporário criado por você para essa reprodução.
+
+Resposta de GET /estatisticas antes do backup:
 {"fotos_no_volume":3,"itens_no_banco":6}
 
 
-$ conteúdo atual do volume fotos
+Listagem observada do conteúdo atual do volume fotos:
 total 1.4M
 -rw-r--r-- 1 app app   68 Oct 19 15:58 0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
 -rw-r--r-- 1 app app   68 Oct 19 15:58 847bfce9e4954a2eb56f3ccf300f2fb9.png
 -rw-r--r-- 1 app app 1.4M Oct 19 22:02 ecfcae7795614f7e997a93477fb7597c.png
 
-$ backup do volume fotos para docs/evidencias/fotos-backup.tar.gz
+Resultado registrado da criação do backup do volume fotos em docs/evidencias/fotos-backup.tar.gz:
 -rw-r--r--  1 juliamzch  staff   1.3M Oct 19 19:03 docs/evidencias/fotos-backup.tar.gz
 
-$ arquivos no backup
+Listagem dos arquivos contidos no backup:
 ./
 ./0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
 ./ecfcae7795614f7e997a93477fb7597c.png
 ./847bfce9e4954a2eb56f3ccf300f2fb9.png
 
-$ criar volume temporário para restauração
+Resultado da criação do volume temporário para restauração:
 fotos_restauradas
 
-$ restaurar com UID/GID app (999:999)
+Restauração registrada usando o UID/GID do usuário app (999:999):
 
-$ arquivos restaurados
+Listagem dos arquivos restaurados:
 total 1380
 -rw-r--r--    1 999      999             68 Oct 19 15:58 0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
 -rw-r--r--    1 999      999             68 Oct 19 15:58 847bfce9e4954a2eb56f3ccf300f2fb9.png
 -rw-r--r--    1 999      999        1403937 Oct 19 22:02 ecfcae7795614f7e997a93477fb7597c.png
 
-$ hashes no volume original
+Hashes SHA-256 dos arquivos no volume original:
 25586dcbceb09f788699bdbd282f4b1e374a700daa55c640151450164f762bcf  ecfcae7795614f7e997a93477fb7597c.png
 431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460  0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
 431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460  847bfce9e4954a2eb56f3ccf300f2fb9.png
 
-$ hashes no volume restaurado
+Hashes SHA-256 dos arquivos no volume restaurado:
 25586dcbceb09f788699bdbd282f4b1e374a700daa55c640151450164f762bcf  ecfcae7795614f7e997a93477fb7597c.png
 431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460  0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
 431ced6916a2a21a156e38701afe55bbd7f88969fbbfc56d7fe099d47f265460  847bfce9e4954a2eb56f3ccf300f2fb9.png
 
 SHA-256 lists match.
 
-$ remover volume temporário de restauração
+Resultado da remoção do volume temporário de restauração:
 fotos_restauradas

@@ -1,5 +1,15 @@
 Legenda: build e inicialização da arquitetura bônus; somente nginx publica 8080, db/web ficam sem portas publicadas.
 
+Comandos para reproduzir as verificações:
+
+```sh
+docker compose up -d --build
+docker compose ps
+docker compose exec web getent hosts db
+docker compose exec nginx nginx -t
+curl -fsS http://localhost:8080/health
+```
+
 $ docker compose up -d --build
  Image achados-perdidos-web Building 
 #1 [internal] load local bake definitions
@@ -71,6 +81,5 @@ $ docker compose exec nginx nginx -t
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 
-$ GET /health via nginx
+Resposta observada para GET /health via Nginx:
 {"banco":"conectado","container":"1044102d5131","status":"ok"}
-

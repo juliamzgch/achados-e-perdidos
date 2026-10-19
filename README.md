@@ -37,16 +37,22 @@ curl "http://localhost:8080/itens?local=biblio"
 curl http://localhost:8080/estatisticas
 ```
 
-Para cadastrar um objeto com uma foto JPG ou PNG existente no computador:
+Para cadastrar um objeto com uma foto JPG ou PNG existente no computador, substitua o caminho de exemplo pelo caminho real de um arquivo local. Se o arquivo estiver na pasta Downloads e se chamar `oculos.jpg`, no macOS ou Linux use:
 
 ```sh
 curl -F "descricao=Oculos de grau" \
      -F "local=Bloco B" \
-     -F "foto=@/caminho/para/oculos.jpg" \
+     -F "foto=@$HOME/Downloads/oculos.jpg" \
      http://localhost:8080/itens
 ```
 
-A resposta inclui o nome gerado para a foto. Consulte `GET /itens` para obter a URL e abra `http://localhost:8080/fotos/<nome>` no navegador. O Nginx aceita uploads de até 10 MB por requisição. Para ver os logs recentes da aplicação:
+Antes de executar, confirme que o arquivo existe, ajustando o nome se necessário:
+
+```sh
+ls -l "$HOME/Downloads/oculos.jpg"
+```
+
+No macOS, também é possível arrastar o arquivo do Finder para o Terminal para inserir seu caminho. Para facilitar, prefira um nome de arquivo sem espaços. No Windows, ajuste o caminho de acordo com o terminal utilizado. A resposta inclui o nome gerado para a foto. Consulte `GET /itens` para obter a URL e abra `http://localhost:8080/fotos/<nome>` no navegador. O Nginx aceita uploads de até 10 MB por requisição. Para ver os logs recentes da aplicação:
 
 ```sh
 docker compose logs --tail 20 web

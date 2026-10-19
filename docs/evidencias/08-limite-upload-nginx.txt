@@ -1,15 +1,42 @@
-Legenda: imagem PNG válida de mais de 1 MB enviada pelo endpoint real; o Nginx encaminha o upload e a API retorna HTTP 201, e a foto pode ser lida de volta.
+Legenda: teste real de upload de uma imagem PNG válida com mais de 1 MB através do Nginx. Os títulos abaixo descrevem as ações realizadas; não são a transcrição literal dos comandos digitados.
 
-$ tamanho e tipo da imagem de teste
+Para repetir o teste, use uma imagem PNG local válida com mais de 1 MB. O arquivo
+temporário da saída histórica pode não existir mais; ajuste `IMAGE_PATH` para um
+arquivo existente. Os comandos abaixo são instruções de reprodução, não a
+transcrição histórica do teste. O POST cria um novo registro e uma nova foto.
+
+```sh
+IMAGE_PATH="$HOME/Downloads/teste-maior-que-1mb.png"
+ls -lh "$IMAGE_PATH"
+file "$IMAGE_PATH"
+
+curl -fS \
+  -F "descricao=Teste de upload acima de 1 MB" \
+  -F "local=Teste Docker" \
+  -F "foto=@$IMAGE_PATH" \
+  http://localhost:8080/itens
+
+# Copie o nome da foto da resposta JSON acima.
+PHOTO_NAME="nome-retornado-pela-api.png"
+curl -fS -o /tmp/foto-baixada.png \
+  "http://localhost:8080/fotos/$PHOTO_NAME"
+cmp "$IMAGE_PATH" /tmp/foto-baixada.png
+curl -fsS http://localhost:8080/estatisticas
+```
+
+Saída capturada na execução histórica. O caminho `/tmp/achados-upload-1-5mb.png`
+era temporário e pode não existir mais. Para produzir saídas equivalentes com
+seu arquivo local, use `ls -lh "$IMAGE_PATH"` e `file "$IMAGE_PATH"` conforme
+os comandos de reprodução acima:
 -rw-r--r--@ 1 juliamzch  wheel   1.3M Oct 19 19:02 /tmp/achados-upload-1-5mb.png
 /tmp/achados-upload-1-5mb.png: PNG image data, 640 x 640, 8-bit/color RGBA, non-interlaced
 
-$ POST /itens com foto PNG > 1 MB via Nginx
+Resultado do POST multipart para /itens através do Nginx:
 {"foto":"ecfcae7795614f7e997a93477fb7597c.png","id":6}
 
-$ GET /fotos/ecfcae7795614f7e997a93477fb7597c.png
+Resultado do GET da foto cadastrada:
 HTTP 200; 1403937 bytes
-Downloaded file matches original (cmp OK).
+Comparação do arquivo baixado com o original: os bytes coincidem (cmp OK).
 
-$ GET /estatisticas
+Resultado do GET /estatisticas após o cadastro:
 {"fotos_no_volume":3,"itens_no_banco":6}

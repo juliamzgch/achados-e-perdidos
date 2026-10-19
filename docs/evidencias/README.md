@@ -1,6 +1,6 @@
 # Evidências
 
-Este diretório guarda saídas de comandos e testes executados no ambiente Docker do projeto. A tabela permite localizar uma evidência a partir da etapa da atividade, sem exigir que cada comando fique em um arquivo separado.
+Este diretório guarda saídas e resultados de testes executados no ambiente Docker do projeto. Quando um comando foi registrado literalmente, ele aparece como comando; títulos como “Resposta observada” e “Resultado da consulta” identificam a operação cujo resultado foi capturado, não uma transcrição exata da linha de terminal. A tabela permite localizar uma evidência a partir da etapa da atividade, sem exigir que cada comando fique em um arquivo separado.
 
 | Etapa ou requisito | Evidência | O que permite conferir |
 | --- | --- | --- |
@@ -13,6 +13,7 @@ Este diretório guarda saídas de comandos e testes executados no ambiente Docke
 | Backup de fotos | [`07-backup-restauracao.txt`](07-backup-restauracao.txt) | Criação do TAR.GZ, restauração em volume independente e comparação dos arquivos por hash. |
 | Limite de upload do proxy | [`08-limite-upload-nginx.txt`](08-limite-upload-nginx.txt) | Upload real de PNG válido com mais de 1 MB por `POST /itens`, resposta HTTP 201, download HTTP 200 e comparação byte a byte. |
 | Escala do serviço web | [`09-escalabilidade.txt`](09-escalabilidade.txt) | Três réplicas saudáveis sem portas publicadas individualmente; dez chamadas via Nginx chegaram à réplica `web-1`, demonstrando que a configuração não distribuiu tráfego nesse teste. |
+| Validação atual e captura visual | [`10-validacao-api.txt`](10-validacao-api.txt) e [`10-health-api.png`](10-health-api.png) | Comandos GET reproduzidos com respostas atuais e captura da rota `/health` no navegador. |
 | Artefato de restauração | [`fotos-backup.tar.gz`](fotos-backup.tar.gz) | Backup incluído para reproduzir a restauração em outro volume; contém somente imagens artificiais de teste. |
 
 ## Como interpretar
@@ -22,3 +23,5 @@ Este diretório guarda saídas de comandos e testes executados no ambiente Docke
 - O arquivo de backup é um artefato de teste e não deve ser tratado como cópia de dados reais. Backups de produção precisam de controle de acesso, retenção e armazenamento apropriado.
 
 Os uploads de teste usaram imagens PNG artificiais, sem dados pessoais.
+
+![Captura da resposta da rota de saúde da API](10-health-api.png)

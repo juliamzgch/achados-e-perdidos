@@ -1,36 +1,79 @@
 Legenda: testes funcionais da versão final, com Nginx como único serviço que publica uma porta no host.
 
+Comandos para reproduzir os testes GET:
+
+```sh
+curl -fsS http://localhost:8080/health
+curl -fsS http://localhost:8080/itens
+curl -fsS "http://localhost:8080/itens?local=biblio"
+curl -fsS http://localhost:8080/estatisticas
+```
+
+Comandos para conferir estado, usuário e logs:
+
+```sh
+docker compose ps
+docker compose exec web whoami
+docker compose logs --tail 20 nginx web
+```
+
+Para repetir os cadastros multipart, troque o caminho pelo de uma imagem local
+existente. Cada POST cria um novo registro; as respostas abaixo são os resultados
+capturados no teste original, não saídas desta repetição.
+
+```sh
+curl -fS \
+  -F "descricao=Oculos de teste" \
+  -F "local=Bloco B" \
+  -F "foto=@/caminho/real/oculos.png" \
+  http://localhost:8080/itens
+
+curl -fS \
+  -F "descricao=Chave de teste" \
+  -F "local=Laboratorio 2" \
+  -F "foto=@/caminho/real/chave.png" \
+  http://localhost:8080/itens
+```
+
+Para conferir uma foto, use o nome devolvido pelo POST ou listado em `GET /itens`:
+
+```sh
+PHOTO_NAME="nome-da-foto-retornado-pela-api.png"
+curl -sS -o /dev/null -w "%{http_code}; %{size_download} bytes\n" \
+  "http://localhost:8080/fotos/$PHOTO_NAME"
+```
+
 $ docker compose ps
-NAME                       IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+NAME                       IMAGE                  COMMAND                  SERVICE   CREATED              STATUS                        PORTS
 achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        21 seconds ago   Up 20 seconds (healthy)   5432/tcp
 achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     21 seconds ago   Up 9 seconds              0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
 achados-perdidos-web-1     achados-perdidos-web   "gunicorn --bind 0.0…"   web       21 seconds ago   Up 14 seconds (healthy)   5000/tcp
 
-$ GET /health
+Resposta observada para GET /health:
 {"banco":"conectado","container":"1044102d5131","status":"ok"}
 
 
-$ GET /itens
+Resposta observada para GET /itens:
 [{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Garrafa termica azul","foto":null,"id":1,"local":"Biblioteca"},{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Carregador de notebook USB-C","foto":null,"id":2,"local":"Laboratorio 3"},{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Casaco preto com capuz","foto":null,"id":3,"local":"Cantina"}]
 
 
-$ GET /itens?local=biblio
+Resposta observada para GET /itens?local=biblio:
 [{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Garrafa termica azul","foto":null,"id":1,"local":"Biblioteca"}]
 
 
-$ POST item com foto 1
+Resposta observada para o primeiro cadastro multipart com foto:
 {"foto":"0fb10ec1b24d4aa1a9bbfeaad445ff4a.png","id":4}
 
 
-$ POST item com foto 2
+Resposta observada para o segundo cadastro multipart com foto:
 {"foto":"847bfce9e4954a2eb56f3ccf300f2fb9.png","id":5}
 
 
-$ GET /estatisticas
+Resposta observada para GET /estatisticas:
 {"fotos_no_volume":2,"itens_no_banco":5}
 
 
-$ GET /fotos (HTTP check for both uploaded files)
+Resultado da consulta HTTP das duas fotos enviadas:
 0fb10ec1b24d4aa1a9bbfeaad445ff4a.png: HTTP 200; 68 bytes
 847bfce9e4954a2eb56f3ccf300f2fb9.png: HTTP 200; 68 bytes
 

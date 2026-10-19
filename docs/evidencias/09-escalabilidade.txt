@@ -4,6 +4,18 @@ Data: 2026-10-19
 O ambiente já estava com três réplicas web em execução antes deste teste. O comando
 foi executado para confirmar o estado desejado; os serviços permaneceram ativos.
 
+Comandos de reprodução:
+
+```sh
+docker compose up -d --scale web=3
+docker compose ps
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  curl -fsS http://localhost:8080/health
+done
+docker compose ps -q web | xargs docker inspect \
+  --format '{{.Name}} hostname={{.Config.Hostname}} health={{.State.Health.Status}}'
+```
+
 $ docker compose up -d --scale web=3
 Container achados-perdidos-db-1 Running
 Container achados-perdidos-web-1 Running
@@ -26,8 +38,8 @@ nginx     achados-perdidos-nginx-1     Up, 0.0.0.0:8080->80/tcp
 Nenhuma réplica web publica uma porta no host. A entrada HTTP continua sendo
 localhost:8080, publicada pelo Nginx.
 
-$ curl http://localhost:8080/health
-Repetido 10 vezes: todas as respostas foram HTTP 200 e indicaram:
+Dez chamadas a GET /health em http://localhost:8080/health:
+Todas as respostas foram HTTP 200 e indicaram:
 {"banco":"conectado","container":"1044102d5131","status":"ok"}
 
 O hostname 1044102d5131 foi identificado por docker inspect como achados-perdidos-web-1.

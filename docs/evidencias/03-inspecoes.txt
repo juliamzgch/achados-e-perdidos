@@ -1,5 +1,22 @@
 Legenda: inspeção final de execução após as melhorias: serviços, mapeamentos de porta, usuário não-root, arquivos persistidos, volumes, rede e tamanhos/digests de imagem.
 
+Comandos para reproduzir as inspeções (os resultados dependem do estado atual):
+
+```sh
+docker compose ps
+docker compose --profile debug ps -a
+docker compose exec web whoami
+docker compose exec nginx nginx -t
+docker compose exec web ls -lh /app/uploads
+docker volume ls --filter label=com.docker.compose.project=achados-perdidos
+docker volume inspect achados-perdidos_dados_banco achados-perdidos_fotos
+docker network inspect achados-perdidos_rede_interna
+docker image ls achados-perdidos-web
+docker image ls adminer
+docker image ls nginx
+docker compose logs --tail 20 nginx web
+```
+
 $ docker compose ps
 NAME                         IMAGE                                                                                  COMMAND                  SERVICE   CREATED              STATUS                 PORTS
 achados-perdidos-adminer-1   adminer:latest                                                                         "entrypoint.sh docke…"   adminer   About an hour ago    Up About an hour       127.0.0.1:8081->8080/tcp
@@ -14,7 +31,15 @@ achados-perdidos-db-1        postgres:16-alpine                                 
 achados-perdidos-nginx-1     nginx:alpine@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913   "/docker-entrypoint.…"   nginx     About a minute ago   Up About a minute      0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
 achados-perdidos-web-1       sha256:64190e73b00c162d242b3744912056058e7c0cb9bf0f7ad79fd71cea3723f1c1                "gunicorn --bind 0.0…"   web       6 hours ago          Up 6 hours (healthy)   5000/tcp
 
-$ docker inspect dos mapeamentos de porta
+Mapeamentos de porta observados na inspeção dos contêineres:
+
+Comando usado para obter os mapeamentos:
+
+```sh
+docker inspect --format '{{.Name}} {{json .NetworkSettings.Ports}}' \
+  $(docker compose ps -q)
+```
+
 /achados-perdidos-db-1 {"5432/tcp":null}
 /achados-perdidos-web-1 {"5000/tcp":null}
 /achados-perdidos-nginx-1 {"80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"},{"HostIp":"::","HostPort":"8080"}]}
@@ -27,11 +52,11 @@ $ docker compose exec nginx nginx -t
 nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
 nginx: configuration file /etc/nginx/nginx.conf test is successful
 
-$ GET /health
+Resposta observada para GET /health:
 {"banco":"conectado","container":"1044102d5131","status":"ok"}
 
 
-$ GET /estatisticas
+Resposta observada para GET /estatisticas:
 {"fotos_no_volume":3,"itens_no_banco":6}
 
 
@@ -158,12 +183,12 @@ $ docker network inspect achados-perdidos_rede_interna
     }
 ]
 
-$ docker image ls project/nginx/adminer
+Tamanhos das imagens observados:
 achados-perdidos-web:latest e59728050f39 233MB
 adminer:latest 49a7d30e71de 169MB
 nginx:alpine db35bfc6b295 93.6MB
 
-$ pinned digests
+Digests fixados no Compose:
 [nginx:alpine] ["nginx@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913"]
 [adminer:latest] ["adminer@sha256:49a7d30e71de97fb18933ffe7d46cc2b343c49fd7a63a7791c8be2548eb65115"]
 

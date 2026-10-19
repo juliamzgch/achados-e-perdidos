@@ -1,6 +1,10 @@
 Legenda: down -v remove os volumes da configuração com Nginx; o banco volta a executar init.sql e recria os três itens iniciais.
 
-$ GET /estatisticas antes de down -v
+Aviso: `docker compose down -v` é destrutivo e apaga os dados persistidos.
+A sequência abaixo foi executada no ambiente de demonstração; não a repita se
+precisar preservar os dados atuais.
+
+Resposta de GET /estatisticas antes de down -v:
 {"fotos_no_volume":2,"itens_no_banco":5}
 
 
@@ -63,14 +67,13 @@ achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db 
 achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     12 seconds ago   Up Less than a second     0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
 achados-perdidos-web-1     achados-perdidos-web   "gunicorn --bind 0.0…"   web       12 seconds ago   Up 5 seconds (healthy)    5000/tcp
 
-$ GET /health
+Resposta observada para GET /health:
 {"banco":"conectado","container":"1044102d5131","status":"ok"}
 
 
-$ GET /estatisticas
+Resposta observada para GET /estatisticas:
 {"fotos_no_volume":0,"itens_no_banco":3}
 
 
-$ GET /itens
+Resposta observada para GET /itens:
 [{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Garrafa termica azul","foto":null,"id":1,"local":"Biblioteca"},{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Carregador de notebook USB-C","foto":null,"id":2,"local":"Laboratorio 3"},{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Casaco preto com capuz","foto":null,"id":3,"local":"Cantina"}]
-

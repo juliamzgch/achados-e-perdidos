@@ -1,6 +1,14 @@
 Legenda: por padrão o Adminer não é iniciado; ativando o profile debug, a interface fica disponível apenas em localhost:8081.
 
-$ docker compose ps antes do profile
+Para reproduzir a verificação HTTP da interface:
+
+```sh
+curl -sS -o /dev/null -w "%{http_code}\n" http://localhost:8081/
+```
+
+Estado dos serviços antes de ativar o profile debug:
+
+$ docker compose ps
 NAME                       IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                    PORTS
 achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        5 minutes ago    Up 5 minutes (healthy)    5432/tcp
 achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     23 seconds ago   Up 16 seconds             0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
@@ -128,7 +136,7 @@ achados-perdidos-db-1        postgres:16-alpine     "docker-entrypoint.s…"   d
 achados-perdidos-nginx-1     nginx:alpine           "/docker-entrypoint.…"   nginx     About a minute ago   Up 57 seconds                 0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
 achados-perdidos-web-1       achados-perdidos-web   "gunicorn --bind 0.0…"   web       About a minute ago   Up About a minute (healthy)   5000/tcp
 
-$ GET http://localhost:8081 (Adminer)
+Resposta HTTP observada ao consultar http://localhost:8081 (Adminer):
 HTTP 200; 5268 bytes
 6:<title>Login - Adminer</title>
 35:<tr><th>System<td><select name='auth[driver]' data-onchange='loginDriver()'><option value="server" selected>MySQL / MariaDB<option value="pgsql">PostgreSQL<option value="sqlite">SQLite<option value="mssql">MS SQL<option value="oracle">Oracle</select>
@@ -137,7 +145,7 @@ $ docker compose --profile debug stop adminer
  Container achados-perdidos-adminer-1 Stopping 
  Container achados-perdidos-adminer-1 Stopped 
 
-$ serviços padrão após parar o painel
+Estado observado dos serviços padrão após parar o painel:
 NAME                       IMAGE                  COMMAND                  SERVICE   CREATED              STATUS                        PORTS
 achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        5 minutes ago        Up 5 minutes (healthy)        5432/tcp
 achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     About a minute ago   Up 57 seconds                 0.0.0.0:8080->80/tcp, [::]:8080->80/tcp

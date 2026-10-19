@@ -1,0 +1,33 @@
+Validação atual da API via Nginx
+
+Comandos e saídas capturados nesta validação. As chamadas abaixo são somente de
+leitura e não criam nem alteram registros.
+
+$ curl -fsS http://localhost:8080/health
+{"banco":"conectado","container":"ee28d984958f","status":"ok"}
+
+$ curl -fsS "http://localhost:8080/itens?local=biblio"
+[{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Garrafa termica azul","foto":null,"id":1,"local":"Biblioteca"}]
+
+$ curl -fsS http://localhost:8080/estatisticas
+{"fotos_no_volume":3,"itens_no_banco":6}
+
+$ curl -sS -o /dev/null -w "%{http_code}\n" http://localhost:8080/fotos/ecfcae7795614f7e997a93477fb7597c.png
+200
+
+A resposta de /health também foi capturada no navegador em
+10-health-api.png. A leitura da foto confirma que o endpoint respondeu HTTP 200;
+o teste de comparação byte a byte está registrado em 08-limite-upload-nginx.txt.
+
+Verificação adicional, executada nesta revisão, da imagem atualmente servida:
+
+$ curl -fsS -o /tmp/achados-foto-validacao.png http://localhost:8080/fotos/ecfcae7795614f7e997a93477fb7597c.png
+
+$ ls -lh /tmp/achados-foto-validacao.png
+-rw-r--r--@ 1 juliamzch  wheel   1.3M Oct 19 20:31 /tmp/achados-foto-validacao.png
+
+$ file /tmp/achados-foto-validacao.png
+/tmp/achados-foto-validacao.png: PNG image data, 640 x 640, 8-bit/color RGBA, non-interlaced
+
+$ shasum -a 256 /tmp/achados-foto-validacao.png
+25586dcbceb09f788699bdbd282f4b1e374a700daa55c640151450164f762bcf  /tmp/achados-foto-validacao.png
