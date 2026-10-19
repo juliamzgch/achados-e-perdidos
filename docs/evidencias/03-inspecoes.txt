@@ -1,0 +1,181 @@
+Legenda: inspeção final dos serviços, portas publicadas, usuário web, volumes, rede e tamanhos das imagens. Adminer está parado após o teste do profile debug.
+
+$ docker compose ps
+NAME                       IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        52 seconds ago   Up 51 seconds (healthy)   5432/tcp
+achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     52 seconds ago   Up 40 seconds             0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1     achados-perdidos-web   "gunicorn --bind 0.0…"   web       52 seconds ago   Up 45 seconds (healthy)   5000/tcp
+
+$ docker compose --profile debug ps -a
+NAME                         IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                     PORTS
+achados-perdidos-adminer-1   adminer:latest         "entrypoint.sh docke…"   adminer   2 minutes ago    Exited (0) 2 minutes ago   
+achados-perdidos-db-1        postgres:16-alpine     "docker-entrypoint.s…"   db        52 seconds ago   Up 51 seconds (healthy)    5432/tcp
+achados-perdidos-nginx-1     nginx:alpine           "/docker-entrypoint.…"   nginx     52 seconds ago   Up 40 seconds              0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1       achados-perdidos-web   "gunicorn --bind 0.0…"   web       52 seconds ago   Up 45 seconds (healthy)    5000/tcp
+
+$ docker inspect bindings (db/web/nginx/adminer)
+/achados-perdidos-db-1 {"5432/tcp":null}
+/achados-perdidos-web-1 {"5000/tcp":null}
+/achados-perdidos-nginx-1 {"80/tcp":[{"HostIp":"0.0.0.0","HostPort":"8080"},{"HostIp":"::","HostPort":"8080"}]}
+/achados-perdidos-adminer-1 {}
+
+$ docker compose exec web whoami
+app
+
+$ docker compose exec nginx nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+$ GET /health
+{"banco":"conectado","container":"1044102d5131","status":"ok"}
+
+
+$ GET /estatisticas
+{"fotos_no_volume":2,"itens_no_banco":5}
+
+
+$ docker compose exec web ls -l /app/uploads
+total 8
+-rw-r--r-- 1 app app 68 Oct 19 15:58 0fb10ec1b24d4aa1a9bbfeaad445ff4a.png
+-rw-r--r-- 1 app app 68 Oct 19 15:58 847bfce9e4954a2eb56f3ccf300f2fb9.png
+
+$ docker volume ls --filter label=com.docker.compose.project=achados-perdidos
+DRIVER    VOLUME NAME
+local     achados-perdidos_dados_banco
+local     achados-perdidos_fotos
+
+$ docker volume inspect achados-perdidos_dados_banco achados-perdidos_fotos
+[
+    {
+        "CreatedAt": "2026-10-19T15:58:26Z",
+        "Driver": "local",
+        "Labels": {
+            "com.docker.compose.config-hash": "4ba06f54269045a91b2e9d6ea8d9837dc0d6f3b74bb1e27ee4f266381031c402",
+            "com.docker.compose.project": "achados-perdidos",
+            "com.docker.compose.version": "5.4.0",
+            "com.docker.compose.volume": "dados_banco"
+        },
+        "Mountpoint": "/var/lib/docker/volumes/achados-perdidos_dados_banco/_data",
+        "Name": "achados-perdidos_dados_banco",
+        "Options": null,
+        "Scope": "local"
+    },
+    {
+        "CreatedAt": "2026-10-19T15:58:26Z",
+        "Driver": "local",
+        "Labels": {
+            "com.docker.compose.config-hash": "f81a00e624dc4820542b31045a72ca847fa9f7f231f810f740569750675af6fa",
+            "com.docker.compose.project": "achados-perdidos",
+            "com.docker.compose.version": "5.4.0",
+            "com.docker.compose.volume": "fotos"
+        },
+        "Mountpoint": "/var/lib/docker/volumes/achados-perdidos_fotos/_data",
+        "Name": "achados-perdidos_fotos",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+
+$ docker network inspect achados-perdidos_rede_interna
+[
+    {
+        "Name": "achados-perdidos_rede_interna",
+        "Id": "d3e3eb74bc585442df63e111d98258afede803e9ab8b5ac675a4309bf3c8686c",
+        "Created": "2026-10-19T15:58:26.608163096Z",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv4": true,
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.20.0.0/16",
+                    "Gateway": "172.20.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Options": {
+            "com.docker.network.enable_ipv4": "true",
+            "com.docker.network.enable_ipv6": "false"
+        },
+        "Labels": {
+            "com.docker.compose.config-hash": "86a318c8db10da1fc0c8c8fa73ba1d6b008ed8c76eb44b4821d23f42e84b1737",
+            "com.docker.compose.network": "rede_interna",
+            "com.docker.compose.project": "achados-perdidos",
+            "com.docker.compose.version": "5.4.0"
+        },
+        "Containers": {
+            "1044102d5131d50727b49368ecb22165ddf64a4ada01dc14546872b58256a745": {
+                "Name": "achados-perdidos-web-1",
+                "EndpointID": "792b7e07184a8701467e7d7856366d4008b50de3af0c9bcd5cb51e213ea2d4c5",
+                "MacAddress": "62:64:a6:72:cd:33",
+                "IPv4Address": "172.20.0.3/16",
+                "IPv6Address": ""
+            },
+            "713f56e80ab1c3bb2967b6070258aa32e5d425439388b5f36dba804dc63486ec": {
+                "Name": "achados-perdidos-db-1",
+                "EndpointID": "973ed80d412ad5cdc06bb33762f0fad68830c2f1ad1eb9333d59650a022083c4",
+                "MacAddress": "8e:db:c4:ce:4c:20",
+                "IPv4Address": "172.20.0.2/16",
+                "IPv6Address": ""
+            },
+            "d98725bfdc90b921346fbf15666b882f459389273bed83fa4a58c69b4fb94ed8": {
+                "Name": "achados-perdidos-nginx-1",
+                "EndpointID": "fd5574af5fdc5c3aac03baae46c7f375dfe8de32aff273123e6f5ed34086102f",
+                "MacAddress": "b2:68:27:29:6a:f1",
+                "IPv4Address": "172.20.0.4/16",
+                "IPv6Address": ""
+            }
+        },
+        "Status": {
+            "IPAM": {
+                "Subnets": {
+                    "172.20.0.0/16": {
+                        "IPsInUse": 6,
+                        "DynamicIPsAvailable": 65530
+                    }
+                }
+            }
+        }
+    }
+]
+
+$ docker image ls (project, nginx, Adminer sizes)
+achados-perdidos-web:latest 233MB
+adminer:latest 169MB
+nginx:alpine 93.6MB
+
+$ docker compose logs --tail 20 nginx web
+web-1    | [2026-10-19 15:58:32 +0000] [1] [INFO] Starting gunicorn 23.0.0
+web-1    | [2026-10-19 15:58:32 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+web-1    | [2026-10-19 15:58:32 +0000] [1] [INFO] Using worker: sync
+web-1    | [2026-10-19 15:58:32 +0000] [7] [INFO] Booting worker with pid: 7
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 23
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 24
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 25
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 26
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 27
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 28
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /itens HTTP/1.1" 200 366 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /itens HTTP/1.1" 200 366 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /itens?local=biblio HTTP/1.1" 200 120 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "POST /itens HTTP/1.1" 201 55 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "POST /itens HTTP/1.1" 201 55 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /fotos/0fb10ec1b24d4aa1a9bbfeaad445ff4a.png HTTP/1.1" 200 68 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /fotos/847bfce9e4954a2eb56f3ccf300f2fb9.png HTTP/1.1" 200 68 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:55 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:59:18 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:59:18 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"

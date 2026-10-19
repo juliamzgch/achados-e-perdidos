@@ -1,0 +1,144 @@
+Legenda: por padrão o Adminer não é iniciado; ativando o profile debug, a interface fica disponível apenas em localhost:8081.
+
+$ docker compose ps antes do profile
+NAME                       IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        5 minutes ago    Up 5 minutes (healthy)    5432/tcp
+achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     23 seconds ago   Up 16 seconds             0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1     achados-perdidos-web   "gunicorn --bind 0.0…"   web       24 seconds ago   Up 22 seconds (healthy)   5000/tcp
+
+$ docker compose --profile debug up -d
+ Image adminer:latest Pulling 
+ d327edff656e Pulling fs layer 0B
+ 99e8d25eec40 Pulling fs layer 0B
+ 7083695453a5 Pulling fs layer 0B
+ e410c112060e Pulling fs layer 0B
+ 989010781ce2 Pulling fs layer 0B
+ c825cb78c7aa Pulling fs layer 0B
+ 64992278f284 Pulling fs layer 0B
+ 7e992aebc76a Pulling fs layer 0B
+ a9986cd6f37d Pulling fs layer 0B
+ 16c54e46fa6e Pulling fs layer 0B
+ ec308c6b793e Pulling fs layer 0B
+ dff0320dc3bd Pulling fs layer 0B
+ dc389f2938cb Pulling fs layer 0B
+ 4f4fb700ef54 Pulling fs layer 0B
+ 40864add9d11 Pulling fs layer 0B
+ 6e14910fbe75 Pulling fs layer 0B
+ b6a5e21c6b6f Pulling fs layer 0B
+ 4f4fb700ef54 Already exists 0B
+ e410c112060e Download complete 0B
+ d327edff656e Download complete 0B
+ 16c54e46fa6e Download complete 0B
+ 7083695453a5 Download complete 0B
+ 64992278f284 Download complete 0B
+ b6a5e21c6b6f Download complete 0B
+ 99e8d25eec40 Downloading 1.049MB
+ 99e8d25eec40 Download complete 0B
+ 7e992aebc76a Download complete 0B
+ dff0320dc3bd Downloading 2.097MB
+ dff0320dc3bd Downloading 3.146MB
+ dc389f2938cb Downloading 1.049MB
+ dff0320dc3bd Downloading 3.146MB
+ dc389f2938cb Downloading 1.049MB
+ dff0320dc3bd Downloading 5.243MB
+ dc389f2938cb Downloading 4.194MB
+ dff0320dc3bd Downloading 8.389MB
+ dc389f2938cb Downloading 4.194MB
+ dc389f2938cb Downloading 4.194MB
+ dff0320dc3bd Downloading 11.53MB
+ dff0320dc3bd Download complete 0B
+ dc389f2938cb Downloading 4.194MB
+ dc389f2938cb Downloading 4.194MB
+ dc389f2938cb Download complete 0B
+ a9986cd6f37d Downloading 1.049MB
+ a9986cd6f37d Downloading 3.146MB
+ ec308c6b793e Downloading 2.097MB
+ a9986cd6f37d Download complete 0B
+ ec308c6b793e Downloading 4.194MB
+ a9986cd6f37d Extracting 1B
+ ec308c6b793e Downloading 5.243MB
+ 989010781ce2 Download complete 0B
+ a9986cd6f37d Extracting 1B
+ ec308c6b793e Downloading 8.389MB
+ a9986cd6f37d Extracting 1B
+ c825cb78c7aa Download complete 0B
+ ec308c6b793e Downloading 10.49MB
+ a9986cd6f37d Extracting 1B
+ ec308c6b793e Downloading 13.63MB
+ a9986cd6f37d Extracting 1B
+ 40864add9d11 Download complete 0B
+ ec308c6b793e Downloading 16.78MB
+ a9986cd6f37d Extracting 1B
+ ec308c6b793e Downloading 18.87MB
+ 6e14910fbe75 Download complete 0B
+ a9986cd6f37d Extracting 1B
+ ec308c6b793e Download complete 0B
+ a9986cd6f37d Extracting 1B
+ a9986cd6f37d Extracting 1B
+ a9986cd6f37d Extracting 1B
+ a9986cd6f37d Extracting 2B
+ a9986cd6f37d Extracting 2B
+ a9986cd6f37d Extracting 2B
+ a9986cd6f37d Extracting 2B
+ a9986cd6f37d Extracting 2B
+ a9986cd6f37d Extracting 2B
+ a9986cd6f37d Extracting 2B
+ a9986cd6f37d Extracting 2B
+ 99e8d25eec40 Pull complete 0B
+ 7e992aebc76a Pull complete 0B
+ dff0320dc3bd Extracting 1B
+ a9986cd6f37d Pull complete 0B
+ 989010781ce2 Pull complete 0B
+ 7e77b245023f Download complete 0B
+ 16c54e46fa6e Pull complete 0B
+ dff0320dc3bd Pull complete 0B
+ ec308c6b793e Extracting 1B
+ ec308c6b793e Extracting 1B
+ 4f4fb700ef54 Pull complete 0B
+ e410c112060e Pull complete 0B
+ d327edff656e Pull complete 0B
+ 7083695453a5 Extracting 1B
+ 64992278f284 Pull complete 0B
+ b6a5e21c6b6f Pull complete 0B
+ dc389f2938cb Pull complete 0B
+ c825cb78c7aa Pull complete 0B
+ 40864add9d11 Pull complete 0B
+ 6e14910fbe75 Pull complete 0B
+ ec308c6b793e Pull complete 0B
+ 7083695453a5 Pull complete 0B
+ Image adminer:latest Pulled 
+ Container achados-perdidos-web-1 Running 
+ Container achados-perdidos-nginx-1 Running 
+ Container achados-perdidos-db-1 Running 
+ Container achados-perdidos-adminer-1 Creating 
+ Container achados-perdidos-adminer-1 Created 
+ Container achados-perdidos-db-1 Waiting 
+ Container achados-perdidos-db-1 Waiting 
+ Container achados-perdidos-db-1 Healthy 
+ Container achados-perdidos-db-1 Healthy 
+ Container achados-perdidos-adminer-1 Starting 
+ Container achados-perdidos-web-1 Waiting 
+ Container achados-perdidos-adminer-1 Started 
+ Container achados-perdidos-web-1 Healthy 
+
+$ docker compose --profile debug ps
+NAME                         IMAGE                  COMMAND                  SERVICE   CREATED              STATUS                        PORTS
+achados-perdidos-adminer-1   adminer:latest         "entrypoint.sh docke…"   adminer   1 second ago         Up Less than a second         127.0.0.1:8081->8080/tcp
+achados-perdidos-db-1        postgres:16-alpine     "docker-entrypoint.s…"   db        5 minutes ago        Up 5 minutes (healthy)        5432/tcp
+achados-perdidos-nginx-1     nginx:alpine           "/docker-entrypoint.…"   nginx     About a minute ago   Up 57 seconds                 0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1       achados-perdidos-web   "gunicorn --bind 0.0…"   web       About a minute ago   Up About a minute (healthy)   5000/tcp
+
+$ GET http://localhost:8081 (Adminer)
+HTTP 200; 5268 bytes
+6:<title>Login - Adminer</title>
+35:<tr><th>System<td><select name='auth[driver]' data-onchange='loginDriver()'><option value="server" selected>MySQL / MariaDB<option value="pgsql">PostgreSQL<option value="sqlite">SQLite<option value="mssql">MS SQL<option value="oracle">Oracle</select>
+
+$ docker compose --profile debug stop adminer
+ Container achados-perdidos-adminer-1 Stopping 
+ Container achados-perdidos-adminer-1 Stopped 
+
+$ serviços padrão após parar o painel
+NAME                       IMAGE                  COMMAND                  SERVICE   CREATED              STATUS                        PORTS
+achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        5 minutes ago        Up 5 minutes (healthy)        5432/tcp
+achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     About a minute ago   Up 57 seconds                 0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1     achados-perdidos-web   "gunicorn --bind 0.0…"   web       About a minute ago   Up About a minute (healthy)   5000/tcp

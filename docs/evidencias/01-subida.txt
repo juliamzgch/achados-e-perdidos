@@ -1,0 +1,76 @@
+Legenda: build e inicialização da arquitetura bônus; somente nginx publica 8080, db/web ficam sem portas publicadas.
+
+$ docker compose up -d --build
+ Image achados-perdidos-web Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 584B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 489B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 76B done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 63B done
+#5 DONE 0.0s
+
+#6 [1/5] FROM docker.io/library/python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+#6 resolve docker.io/library/python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 done
+#6 DONE 0.0s
+
+#7 [3/5] COPY requirements.txt .
+#7 CACHED
+
+#8 [4/5] RUN pip install --no-cache-dir -r requirements.txt     && groupadd --system app     && useradd --system --gid app --create-home --home-dir /home/app app     && mkdir -p /app/uploads     && chown app:app /app/uploads
+#8 CACHED
+
+#9 [2/5] WORKDIR /app
+#9 CACHED
+
+#10 [5/5] COPY --chown=app:app app.py .
+#10 CACHED
+
+#11 exporting to image
+#11 exporting layers done
+#11 exporting manifest sha256:65bc6dbc342bd59b7193b29fbb2f5d96519094f15076d4727762c1395887f2b3 done
+#11 exporting config sha256:8680c0b31673ac19ba362d737352fcafb708462fe034c322292a67c095a2e1ca done
+#11 exporting attestation manifest sha256:a78879e30e66896230dc139be7c6f1740d4811943b8a01266af436c8e8e8fa41 done
+#11 exporting manifest list sha256:d61bb6d012fda42dc60fd560ef23053e51cb68d2dcff21a2991dd16b59ebe48b done
+#11 naming to docker.io/library/achados-perdidos-web:latest done
+#11 unpacking to docker.io/library/achados-perdidos-web:latest done
+#11 DONE 0.0s
+
+#12 resolving provenance for metadata file
+#12 DONE 0.0s
+ Image achados-perdidos-web Built 
+ Container achados-perdidos-db-1 Running 
+ Container achados-perdidos-web-1 Running 
+ Container achados-perdidos-nginx-1 Running 
+ Container achados-perdidos-db-1 Waiting 
+ Container achados-perdidos-db-1 Healthy 
+ Container achados-perdidos-web-1 Waiting 
+ Container achados-perdidos-web-1 Healthy 
+
+$ docker compose ps
+NAME                       IMAGE                                                                     COMMAND                  SERVICE   CREATED              STATUS                        PORTS
+achados-perdidos-db-1      postgres:16-alpine                                                        "docker-entrypoint.s…"   db        About a minute ago   Up About a minute (healthy)   5432/tcp
+achados-perdidos-nginx-1   nginx:alpine                                                              "/docker-entrypoint.…"   nginx     About a minute ago   Up About a minute             0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1     sha256:64190e73b00c162d242b3744912056058e7c0cb9bf0f7ad79fd71cea3723f1c1   "gunicorn --bind 0.0…"   web       About a minute ago   Up About a minute (healthy)   5000/tcp
+
+$ docker compose exec web getent hosts db
+172.20.0.2      db
+
+$ docker compose exec nginx nginx -t
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+$ GET /health via nginx
+{"banco":"conectado","container":"1044102d5131","status":"ok"}
+

@@ -1,0 +1,68 @@
+Legenda: os dois objetos e fotos permanecem no banco/volume após recriação dos serviços com Nginx.
+
+$ GET /estatisticas antes de docker compose down
+{"fotos_no_volume":2,"itens_no_banco":5}
+
+
+$ docker compose down
+ Container achados-perdidos-nginx-1 Stopping 
+ Container achados-perdidos-nginx-1 Stopped 
+ Container achados-perdidos-nginx-1 Removing 
+ Container achados-perdidos-nginx-1 Removed 
+ Container achados-perdidos-web-1 Stopping 
+ Container achados-perdidos-web-1 Stopped 
+ Container achados-perdidos-web-1 Removing 
+ Container achados-perdidos-web-1 Removed 
+ Container achados-perdidos-db-1 Stopping 
+ Container achados-perdidos-db-1 Stopped 
+ Container achados-perdidos-db-1 Removing 
+ Container achados-perdidos-db-1 Removed 
+ Network achados-perdidos_rede_interna Removing 
+ Network achados-perdidos_rede_interna Removed 
+
+$ docker compose up -d
+ Network achados-perdidos_rede_interna Creating 
+ Network achados-perdidos_rede_interna Creating 
+ Network achados-perdidos_rede_interna Created 
+ Network achados-perdidos_rede_interna Created 
+ Container achados-perdidos-db-1 Creating 
+ Container achados-perdidos-db-1 Created 
+ Container achados-perdidos-web-1 Creating 
+ Container achados-perdidos-web-1 Created 
+ Container achados-perdidos-nginx-1 Creating 
+ Container achados-perdidos-nginx-1 Created 
+ Container achados-perdidos-db-1 Starting 
+ Container achados-perdidos-db-1 Started 
+ Container achados-perdidos-db-1 Waiting 
+ Container achados-perdidos-db-1 Healthy 
+ Container achados-perdidos-web-1 Starting 
+ Container achados-perdidos-web-1 Started 
+ Container achados-perdidos-web-1 Waiting 
+ Container achados-perdidos-web-1 Healthy 
+ Container achados-perdidos-nginx-1 Starting 
+ Container achados-perdidos-nginx-1 Started 
+
+$ docker compose ps
+NAME                       IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        11 seconds ago   Up 11 seconds (healthy)   5432/tcp
+achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     11 seconds ago   Up Less than a second     0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1     achados-perdidos-web   "gunicorn --bind 0.0…"   web       11 seconds ago   Up 5 seconds (healthy)    5000/tcp
+
+$ GET /health após recriação
+{"banco":"conectado","container":"28d6e386ac6f","status":"ok"}
+
+
+$ GET /estatisticas após recriação
+{"fotos_no_volume":2,"itens_no_banco":5}
+
+
+$ GET foto 1 após recriação
+HTTP 200; 68 bytes
+
+$ GET foto 2 após recriação
+HTTP 200; 68 bytes
+
+$ docker compose exec web ls -l /app/uploads
+total 8
+-rw-r--r-- 1 app app 68 Oct 19 15:56 457fb1fc29994326bd7f9896f4e749fe.png
+-rw-r--r-- 1 app app 68 Oct 19 15:56 f2ee727e0e60425ab4a9b46900d470b2.png

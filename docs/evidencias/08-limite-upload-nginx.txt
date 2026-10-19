@@ -1,0 +1,21 @@
+Legenda: o Nginx aceita uma requisição multipart de 1,5 MB (acima do padrão de 1 MB) e a encaminha ao Flask; resposta 404 da rota inexistente prova que não foi bloqueada com 413 pelo proxy.
+
+$ configuração ativa do Nginx
+140-    listen 80;
+141-    server_name _;
+142:    client_max_body_size 10M;
+143-
+144-    location / {
+
+$ tamanho do arquivo enviado
+-rw-r--r--@ 1 juliamzch  wheel   1.5M Oct 19 13:32 /tmp/achados-upload-over-1mb.bin
+
+$ POST multipart de 1,5 MB para rota inexistente
+HTTP 404
+
+$ trecho da resposta do Flask
+<!doctype html>
+<html lang=en>
+<title>404 Not Found</title>
+<h1>Not Found</h1>
+<p>The requested URL was not found on the server. If you entered the URL manually

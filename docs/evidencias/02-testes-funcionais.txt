@@ -1,0 +1,64 @@
+Legenda: testes funcionais da versão final, com Nginx como único serviço que publica uma porta no host.
+
+$ docker compose ps
+NAME                       IMAGE                  COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+achados-perdidos-db-1      postgres:16-alpine     "docker-entrypoint.s…"   db        21 seconds ago   Up 20 seconds (healthy)   5432/tcp
+achados-perdidos-nginx-1   nginx:alpine           "/docker-entrypoint.…"   nginx     21 seconds ago   Up 9 seconds              0.0.0.0:8080->80/tcp, [::]:8080->80/tcp
+achados-perdidos-web-1     achados-perdidos-web   "gunicorn --bind 0.0…"   web       21 seconds ago   Up 14 seconds (healthy)   5000/tcp
+
+$ GET /health
+{"banco":"conectado","container":"1044102d5131","status":"ok"}
+
+
+$ GET /itens
+[{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Garrafa termica azul","foto":null,"id":1,"local":"Biblioteca"},{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Carregador de notebook USB-C","foto":null,"id":2,"local":"Laboratorio 3"},{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Casaco preto com capuz","foto":null,"id":3,"local":"Cantina"}]
+
+
+$ GET /itens?local=biblio
+[{"criado_em":"2026-10-19T15:58:27.420628","descricao":"Garrafa termica azul","foto":null,"id":1,"local":"Biblioteca"}]
+
+
+$ POST item com foto 1
+{"foto":"0fb10ec1b24d4aa1a9bbfeaad445ff4a.png","id":4}
+
+
+$ POST item com foto 2
+{"foto":"847bfce9e4954a2eb56f3ccf300f2fb9.png","id":5}
+
+
+$ GET /estatisticas
+{"fotos_no_volume":2,"itens_no_banco":5}
+
+
+$ GET /fotos (HTTP check for both uploaded files)
+0fb10ec1b24d4aa1a9bbfeaad445ff4a.png: HTTP 200; 68 bytes
+847bfce9e4954a2eb56f3ccf300f2fb9.png: HTTP 200; 68 bytes
+
+$ docker compose exec web whoami
+app
+
+$ docker compose logs --tail 20 nginx web
+web-1  | [2026-10-19 15:58:32 +0000] [1] [INFO] Starting gunicorn 23.0.0
+web-1  | [2026-10-19 15:58:32 +0000] [1] [INFO] Listening at: http://0.0.0.0:5000 (1)
+web-1  | [2026-10-19 15:58:32 +0000] [1] [INFO] Using worker: sync
+web-1  | [2026-10-19 15:58:32 +0000] [7] [INFO] Booting worker with pid: 7
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker processes
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 21
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 22
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 23
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 24
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 25
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 26
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 27
+nginx-1  | 2026/10/19 15:58:37 [notice] 1#1: start worker process 28
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:38 +0000] "GET /itens HTTP/1.1" 200 366 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /health HTTP/1.1" 200 63 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /itens HTTP/1.1" 200 366 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /itens?local=biblio HTTP/1.1" 200 120 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "POST /itens HTTP/1.1" 201 55 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "POST /itens HTTP/1.1" 201 55 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /estatisticas HTTP/1.1" 200 41 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /fotos/0fb10ec1b24d4aa1a9bbfeaad445ff4a.png HTTP/1.1" 200 68 "-" "curl/8.7.1" "-"
+nginx-1  | 192.168.65.1 - - [19/Oct/2026:15:58:47 +0000] "GET /fotos/847bfce9e4954a2eb56f3ccf300f2fb9.png HTTP/1.1" 200 68 "-" "curl/8.7.1" "-"
